@@ -55,6 +55,24 @@ CREATE TABLE items (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Criação da tabela de colaboradores
+CREATE TABLE employees (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    nome VARCHAR NOT NULL,
+    cpf VARCHAR UNIQUE,
+    cargo VARCHAR,
+    setor VARCHAR,
+    email VARCHAR UNIQUE,
+    telefone VARCHAR,
+    status VARCHAR NOT NULL DEFAULT 'ativo',
+    itens_vinculados UUID[] DEFAULT '{}', -- Array de UUIDs
+    data_cadastro TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    salario DECIMAL(10,2) DEFAULT 0.00,
+    data_admissao TIMESTAMP WITH TIME ZONE NULL, -- Data de Admissão
+    data_desligamento TIMESTAMP WITH TIME ZONE NULL -- Data de Desligamento
+);
+
 -- Criação de índices para melhor performance
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_tasks_project_id ON tasks(project_id);
@@ -98,4 +116,68 @@ CREATE TRIGGER update_tasks_updated_at
 CREATE TRIGGER update_items_updated_at
     BEFORE UPDATE ON items
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Criação da tabela de histórico de salários
+CREATE TABLE salary_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    valor_anterior DECIMAL(10,2) NOT NULL,
+    valor_novo DECIMAL(10,2) NOT NULL,
+    data_alteracao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    motivo TEXT NOT NULL,
+    usuario_alteracao UUID NOT NULL REFERENCES auth.users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Criar índices para melhor performance
+CREATE INDEX idx_salary_history_employee_id ON salary_history(employee_id);
+CREATE INDEX idx_salary_history_data_alteracao ON salary_history(data_alteracao);
+
+-- Criar função para atualizar o updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Criar trigger para atualizar o updated_at
+CREATE TRIGGER update_salary_history_updated_at
+    BEFORE UPDATE ON salary_history
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Criar política de segurança RLS (Row Level Security)
+ALTER TABLE salary_history ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir leitura para usuários autenticados
+CREATE POLICY "Usuários autenticados podem ler histórico de salários"
+    ON salary_history
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Política para permitir inserção apenas para usuários autenticados
+CREATE POLICY "Usuários autenticados podem inserir histórico de salários"
+    ON salary_history
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- Política para permitir atualização apenas para usuários autenticados
+CREATE POLICY "Usuários autenticados podem atualizar histórico de salários"
+    ON salary_history
+    FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- Política para permitir deleção apenas para usuários autenticados
+CREATE POLICY "Usuários autenticados podem deletar histórico de salários"
+    ON salary_history
+    FOR DELETE
+    TO authenticated
+    USING (true); 

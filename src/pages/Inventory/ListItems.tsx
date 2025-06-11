@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { databaseService, Item } from '../../services/database';
-import { 
-  FaBox, 
-  FaEdit, 
-  FaTrash, 
+import {
+  FaBox,
+  FaEdit,
+  FaTrash,
   FaPlus,
   FaExclamationTriangle,
-  FaCheckCircle
+  FaCheckCircle,
+  FaSearch,
+  FaFilter,
+  FaSortAlphaDown,
+  FaSortAlphaUp,
+  FaSortNumericDown,
+  FaSortNumericUp
 } from 'react-icons/fa';
 
 export function ListItems() {
@@ -16,6 +22,19 @@ export function ListItems() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<{
+    setor: string;
+    responsavel: string;
+    item: string;
+  }>({
+    setor: '',
+    responsavel: '',
+    item: '',
+  });
+  const [sortColumn, setSortColumn] = useState<string | null>('codigo');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     loadItems();
@@ -30,6 +49,7 @@ export function ListItems() {
     } catch (err) {
       console.error('Erro ao carregar itens:', err);
       setError('Erro ao carregar a lista de itens. Tente novamente.');
+      ;
     } finally {
       setLoading(false);
     }
@@ -41,15 +61,67 @@ export function ListItems() {
       setSuccess('Item excluído com sucesso!');
       setItemToDelete(null);
       loadItems();
+      ;
     } catch (err) {
       console.error('Erro ao excluir item:', err);
       setError('Erro ao excluir item. Tente novamente.');
+      ;
     }
   };
 
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = 
+      item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.item?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.detalhes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.numero_serie?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.setor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.responsavel?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesSetor = !filters.setor || item.setor?.toLowerCase() === filters.setor.toLowerCase();
+    const matchesResponsavel = !filters.responsavel || item.responsavel?.toLowerCase() === filters.responsavel.toLowerCase();
+    const matchesItem = !filters.item || item.item?.toLowerCase() === filters.item.toLowerCase();
+
+    return matchesSearch && matchesSetor && matchesResponsavel && matchesItem;
+  });
+
+  const sortedItems = React.useMemo(() => {
+    let sortableItems = [...filteredItems];
+    if (sortColumn) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortColumn as keyof Item] || '';
+        const bValue = b[sortColumn as keyof Item] || '';
+
+        if (aValue < bValue) {
+          return sortDirection === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortDirection === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredItems, sortColumn, sortDirection]);
+
+  const uniqueSetores = [...new Set(items.map(item => item.setor).filter(Boolean))];
+  const uniqueResponsaveis = [...new Set(items.map(item => item.responsavel).filter(Boolean))];
+  const uniqueItems = [...new Set(items.map(item => item.item).filter(Boolean))];
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-12">
+        {/* Cabeçalho */}
         <div className="md:flex md:items-center md:justify-between mb-8">
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
@@ -60,7 +132,14 @@ export function ListItems() {
               Gerencie os itens do seu inventário.
             </p>
           </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4">
+          <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <FaFilter className="h-4 w-4 mr-2" />
+              Filtros
+            </button>
             <Link
               to="/inventory/new"
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -71,6 +150,7 @@ export function ListItems() {
           </div>
         </div>
 
+        {/* Mensagens de Erro e Sucesso */}
         {error && (
           <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 shadow-sm">
             <div className="flex items-center">
@@ -89,85 +169,153 @@ export function ListItems() {
           </div>
         )}
 
+        {/* Filtros */}
+        {showFilters && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Setor</label>
+                <select
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  value={filters.setor || ''}
+                  onChange={(e) => setFilters(prev => ({ ...prev, setor: e.target.value }))}
+                >
+                  <option value="">Todos os setores</option>
+                  {uniqueSetores.map(setor => (
+                    <option key={setor || ''} value={setor || ''}>{setor}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Responsável</label>
+                <select
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  value={filters.responsavel || ''}
+                  onChange={(e) => setFilters(prev => ({ ...prev, responsavel: e.target.value }))}
+                >
+                  <option value="">Todos os responsáveis</option>
+                  {uniqueResponsaveis.map(responsavel => (
+                    <option key={responsavel || ''} value={responsavel || ''}>{responsavel}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Item</label>
+                <select
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  value={filters.item || ''}
+                  onChange={(e) => setFilters(prev => ({ ...prev, item: e.target.value }))}
+                >
+                  <option value="">Todos os itens</option>
+                  {uniqueItems.map(item => (
+                    <option key={item || ''} value={item || ''}>{item}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Barra de Pesquisa */}
+        <div className="mb-6">
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 pr-3 py-2 sm:text-sm border-gray-300 rounded-md"
+              placeholder="Pesquisar itens..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Tabela */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="divide-y divide-gray-200 w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Código
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Item
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Modelo
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Setor
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fornecedor
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
+                  {[
+                    { id: 'codigo', label: 'Código', sortable: true },
+                    { id: 'item', label: 'Item', sortable: true },
+                    { id: 'detalhes', label: 'Detalhes', sortable: true },
+                    { id: 'modelo', label: 'Modelo', sortable: true },
+                    { id: 'numero_serie', label: 'Número de Série', sortable: true },
+                    { id: 'setor', label: 'Setor', sortable: true },
+                    { id: 'responsavel', label: 'Responsável', sortable: true },
+                    { id: 'acoes', label: 'Ações', sortable: false }
+                  ].map((column) => (
+                    <th
+                      key={column.id}
+                      scope="col"
+                      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.sortable ? 'cursor-pointer hover:text-gray-700' : ''}`}
+                      onClick={() => column.sortable && handleSort(column.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        {column.label}
+                        {column.sortable && sortColumn === column.id && (
+                          sortDirection === 'asc' ? <FaSortAlphaUp className="ml-2" /> : <FaSortAlphaDown className="ml-2" />
+                        )}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Carregando...
+                    <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                      <div className="flex justify-center items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                      </div>
                     </td>
                   </tr>
-                ) : items.length === 0 ? (
+                ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Nenhum item cadastrado.
+                    <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
+                      {searchTerm ? 'Nenhum item encontrado para a pesquisa.' : 'Nenhum item cadastrado.'}
                     </td>
                   </tr>
                 ) : (
-                  items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  sortedItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         {item.codigo}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500">
                         {item.item}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {item.detalhes || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
                         {item.modelo || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {item.numero_serie || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
                         {item.setor || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          item.status === 'Ativo' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {item.status}
-                        </span>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {item.responsavel || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.suppliers ? (item.suppliers.nome_fantasia || item.suppliers.razao_social) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 text-right text-sm font-medium">
                         <div className="flex justify-end space-x-3">
                           <Link
                             to={`/inventory/edit/${item.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-indigo-600 hover:text-indigo-900 transition-colors duration-150"
+                            title="Editar item"
                           >
                             <FaEdit className="h-5 w-5" />
                           </Link>
                           <button
                             onClick={() => setItemToDelete(item)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 transition-colors duration-150"
+                            title="Excluir item"
                           >
                             <FaTrash className="h-5 w-5" />
                           </button>
@@ -231,4 +379,4 @@ export function ListItems() {
       )}
     </div>
   );
-} 
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { databaseService, Supplier } from '../../services/database';
-import { toast } from 'react-toastify';
+
 import { Link } from 'react-router-dom';
 import { BuildingOffice2Icon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
@@ -17,7 +17,7 @@ export function ListSuppliers() {
         setSuppliers(data);
       } catch (err: any) {
         setError(err.message);
-        toast.error(`Erro ao buscar fornecedores: ${err.message}`);
+        ;
       } finally {
         setLoading(false);
       }
@@ -31,9 +31,9 @@ export function ListSuppliers() {
       try {
         await databaseService.suppliers.delete(id);
         setSuppliers(suppliers.filter(supplier => supplier.id !== id));
-        toast.success('Fornecedor excluído com sucesso!');
+        ;
       } catch (err: any) {
-        toast.error(`Erro ao excluir fornecedor: ${err.message}`);
+        ;
       }
     }
   };

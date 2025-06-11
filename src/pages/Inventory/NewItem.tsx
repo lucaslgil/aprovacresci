@@ -16,7 +16,6 @@ import {
   FaTrash
 } from 'react-icons/fa';
 import { MdDescription } from 'react-icons/md';
-import { toast } from 'react-toastify';
 import { CubeIcon, QrCodeIcon, TruckIcon, BuildingOffice2Icon, UserIcon, DocumentTextIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 
 interface FormData {
@@ -30,6 +29,8 @@ interface FormData {
   setor: string | null;
   responsavel: string | null;
   status: string;
+  valor_aproximado: number | null;
+  motivo_descarte?: string | null;
 }
 
 export function NewItem() {
@@ -46,6 +47,7 @@ export function NewItem() {
     setor: null,
     responsavel: null,
     status: 'Em Estoque',
+    valor_aproximado: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,8 @@ export function NewItem() {
   const [supplierLoading, setSupplierLoading] = useState(true);
   const [supplierText, setSupplierText] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [originalCode, setOriginalCode] = useState<string | null>(null);
+  const [motivoDescarte, setMotivoDescarte] = useState<string | null>(null);
 
   useEffect(() => {
     const loadItemData = async () => {
@@ -76,7 +80,11 @@ export function NewItem() {
             setor: itemData.setor || null,
             responsavel: itemData.responsavel || null,
             status: itemData.status || 'Em Estoque',
+            valor_aproximado: itemData.valor_aproximado || null,
+            motivo_descarte: itemData.motivo_descarte || null,
           });
+          setMotivoDescarte(itemData.motivo_descarte || null);
+          setOriginalCode(itemData.codigo || null);
           if (itemData.suppliers) {
             setSupplierText(itemData.suppliers.nome_fantasia || itemData.suppliers.razao_social || '');
           } else {
@@ -114,7 +122,7 @@ export function NewItem() {
         const suppliersData = await databaseService.suppliers.getAll();
         setSuppliers(suppliersData);
       } catch (error: any) {
-        toast.error(`Erro ao carregar fornecedores: ${error.message}`);
+        ;
       } finally {
         setSupplierLoading(false);
       }
@@ -133,7 +141,7 @@ export function NewItem() {
   }, [supplierText, suppliers]);
 
   useEffect(() => {
-    const isCodeChangedInEdit = isEditing && formData.codigo !== ('initial code fetched from item');
+    const isCodeChangedInEdit = isEditing && formData.codigo !== originalCode;
     const shouldValidate = !isEditing || (isEditing && formData.codigo && isCodeChangedInEdit);
 
     if (shouldValidate) {
@@ -158,7 +166,15 @@ export function NewItem() {
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const updatedValue = value === '' ? null : value;
+    let updatedValue: string | number | null = value === '' ? null : value;
+
+    if (name === 'valor_aproximado') {
+      updatedValue = value === '' ? null : parseFloat(value);
+      if (isNaN(updatedValue as number) && updatedValue !== null) {
+        console.log('Valor não numérico inserido no campo valor_aproximado');
+      }
+    }
+
     setFormData({ ...formData, [name]: updatedValue });
 
     if (name === 'codigo') {
@@ -182,11 +198,22 @@ export function NewItem() {
          setCodeError(null);
       }
     }
+
+    // Handle motivoDescarte change separately
+    if (name === 'motivo_descarte') {
+      setMotivoDescarte(updatedValue as string | null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (codeError) return;
+
+    // Validate motivo_descarte if status is Descartado
+    if (formData.status === 'Descartado' && !motivoDescarte) {
+      setError('O motivo do descarte é obrigatório quando o status é Descartado.');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -204,6 +231,8 @@ export function NewItem() {
         setor: formData.setor || null,
         responsavel: formData.responsavel || null,
         status: formData.status,
+        valor_aproximado: formData.valor_aproximado || null,
+        motivo_descarte: formData.status === 'Descartado' ? motivoDescarte : null, // Save motivo only if status is Descartado
       };
 
       if (isEditing && id) {
@@ -251,7 +280,16 @@ export function NewItem() {
     navigate('/inventory');
   };
 
-  const statusOptions = ['Em Estoque', 'Em Uso', 'Manutenção', 'Descartado', 'Perdido'];
+  const statusOptions = ['Ativo', 'Inativo', 'Descartado'];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Ativo': return 'bg-green-500';
+      case 'Inativo': return 'bg-yellow-500';
+      case 'Descartado': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   const handleSupplierTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
@@ -451,6 +489,28 @@ export function NewItem() {
                   </div>
                 </div>
 
+                {/* Valor Aproximado */}
+                <div className="sm:col-span-3">
+                  <label htmlFor="valor_aproximado" className="block text-sm font-medium text-gray-700 mb-1">
+                    Valor Aproximado
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                       <span className="text-gray-500 sm:text-sm">R$</span>
+                    </div>
+                    <input
+                      type="number"
+                      name="valor_aproximado"
+                      id="valor_aproximado"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      placeholder="0.00"
+                      value={formData.valor_aproximado || ''}
+                      onChange={handleInputChange}
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
                 {/* Fornecedor (Text input with suggestions) */}
                 <div className="sm:col-span-3">
                   <label htmlFor="supplier_text" className="block text-sm font-medium text-gray-700 mb-1">
@@ -474,7 +534,7 @@ export function NewItem() {
                     />
 
                     {showSuggestions && filteredSuppliers.length > 0 && (
-                      <ul className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                      <ul className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-gray-900 hover:bg-indigo-600 hover:text-white">
                         {filteredSuppliers.map((supplier) => (
                           <li
                             key={supplier.id}
@@ -536,6 +596,7 @@ export function NewItem() {
                    <div className="sm:col-span-3">
                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
                      Status
+                     <span className={`ml-2 inline-block h-3 w-3 rounded-full ${getStatusColor(formData.status)}`}></span>
                    </label>
                    <div className="relative rounded-md shadow-sm">
                      <select
@@ -553,6 +614,29 @@ export function NewItem() {
                      </select>
                    </div>
                  </div>
+                )}
+
+                {/* Motivo Descarte (apenas se status for Descartado e em edição) */}
+                {isEditing && formData.status === 'Descartado' && (
+                   <div className="sm:col-span-6">
+                    <label htmlFor="motivo_descarte" className="block text-sm font-medium text-gray-700 mb-1">
+                      Motivo do Descarte
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <textarea
+                        id="motivo_descarte"
+                        name="motivo_descarte"
+                        rows={3}
+                        className={`block w-full pl-3 pr-3 py-2 border ${!motivoDescarte ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base`}
+                        placeholder="Descreva o motivo pelo qual o item foi descartado"
+                        value={motivoDescarte || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    {!motivoDescarte && (
+                      <p className="mt-1 text-sm text-red-600">O motivo do descarte é obrigatório.</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -640,4 +724,6 @@ export function NewItem() {
       )}
     </div>
   );
-} 
+}
+
+export default NewItem; 

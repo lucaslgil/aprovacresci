@@ -6,6 +6,7 @@ import { useAuthStore } from './store/auth'
 import { Dashboard } from './pages/Dashboard'
 import { NewItem } from './pages/Inventory/NewItem'
 import { ListItems } from './pages/Inventory/ListItems'
+import { ImportItems } from './pages/Inventory/ImportItems'
 // Import components for Purchase Orders
 import { NewPurchaseOrder } from './pages/PurchaseOrders/NewPurchaseOrder';
 import { ApprovePurchaseOrders } from './pages/PurchaseOrders/ApprovePurchaseOrders';
@@ -14,6 +15,15 @@ import { ApprovePurchaseOrders } from './pages/PurchaseOrders/ApprovePurchaseOrd
 import { NewSupplier } from './pages/Suppliers/NewSupplier';
 import { ListSuppliers } from './pages/Suppliers/ListSuppliers';
 import { EditSupplier } from './pages/Suppliers/EditSupplier';
+import { ItemForm } from './pages/Inventory/ItemForm';
+import { ListEmployees } from './pages/Employees/ListEmployees';
+import { EmployeeForm } from './pages/Employees/EmployeeForm';
+import { EmployeeTerm } from './pages/Employees/EmployeeTerm';
+import { EmployeeSalaryHistory } from './pages/Employees/EmployeeSalaryHistory';
+// Import components for Companies
+import { CompaniesList } from './pages/Companies/CompaniesList';
+import { NewCompany } from './pages/Companies/NewCompany';
+import { EditCompany } from './pages/Companies/EditCompany';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuthStore()
@@ -50,6 +60,14 @@ export const router = createBrowserRouter([
     path: '/inventory',
     element: (
       <PrivateRoute>
+        <Navigate to="/inventory/list" />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/inventory/list',
+    element: (
+      <PrivateRoute>
         <ListItems />
       </PrivateRoute>
     ),
@@ -66,7 +84,15 @@ export const router = createBrowserRouter([
     path: '/inventory/edit/:id',
     element: (
       <PrivateRoute>
-        <NewItem />
+        <ItemForm />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/inventory/import',
+    element: (
+      <PrivateRoute>
+        <ImportItems />
       </PrivateRoute>
     ),
   },
@@ -134,6 +160,70 @@ export const router = createBrowserRouter([
     element: (
       <PrivateRoute>
         <EditSupplier />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees',
+    element: (
+      <PrivateRoute>
+        <ListEmployees />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/new',
+    element: (
+      <PrivateRoute>
+        <EmployeeForm />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/edit/:id',
+    element: (
+      <PrivateRoute>
+        <EmployeeForm />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/term/:id',
+    element: (
+      <PrivateRoute>
+        <EmployeeTerm />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/salary-history/:id',
+    element: (
+      <PrivateRoute>
+        <EmployeeSalaryHistory />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/cadastros/empresas',
+    element: (
+      <PrivateRoute>
+        <CompaniesList />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/cadastros/empresas/new',
+    element: (
+      <PrivateRoute>
+        <NewCompany />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/cadastros/empresas/edit/:id',
+    element: (
+      <PrivateRoute>
+        <EditCompany />
       </PrivateRoute>
     ),
   },

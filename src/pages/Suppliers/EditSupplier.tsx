@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { databaseService, Supplier } from '../../services/database';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+
 // Assuming you have Heroicons or react-icons installed
 import { BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
@@ -40,7 +40,7 @@ export function EditSupplier() {
   useEffect(() => {
     const fetchSupplier = async () => {
       if (!id) {
-        toast.error('ID do fornecedor não fornecido.');
+        ;
         setLoading(false);
         return;
       }
@@ -60,7 +60,7 @@ export function EditSupplier() {
           estado: supplierData.estado || '',
         });
       } catch (error: any) {
-        toast.error(`Erro ao carregar fornecedor: ${error.message}`);
+        ;
         // Optionally navigate away or show an error state
       } finally {
         setLoading(false);
@@ -78,7 +78,7 @@ export function EditSupplier() {
   const handleCepSearch = async () => {
     const cep = formData.cep.replace(/\D/g, ''); // Remove non-numeric characters
     if (cep.length !== 8) {
-      toast.error('Por favor, insira um CEP válido com 8 dígitos.');
+      ;
       return;
     }
 
@@ -86,13 +86,13 @@ export function EditSupplier() {
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       if (!response.ok) {
-         toast.error('Erro na comunicação com a API de CEP.');
+         ;
          return;
       }
       const data = await response.json();
 
       if (data.erro) {
-         toast.error('CEP não encontrado.');
+         ;
          setFormData(prevData => ({
             ...prevData,
             endereco: '',
@@ -108,10 +108,10 @@ export function EditSupplier() {
           cidade: data.localidade || '',
           estado: data.uf || '',
         }));
-        toast.success('Endereço preenchido com sucesso!');
+        ;
       }
     } catch (error: any) {
-      toast.error(`Erro ao buscar CEP: ${error.message}`);
+      ;
     } finally {
       setCepLoading(false);
     }
@@ -126,7 +126,7 @@ export function EditSupplier() {
     try {
       // Basic validation (can be expanded)
       if (!formData.nome_fantasia || !formData.razao_social || !formData.cnpj) {
-        toast.error('Nome Fantasia, Razão Social e CNPJ são obrigatórios.');
+        ;
         setSaving(false);
         return;
       }
@@ -146,10 +146,10 @@ export function EditSupplier() {
       };
 
       await databaseService.suppliers.update(id, updatedSupplier);
-      toast.success('Fornecedor atualizado com sucesso!');
+      ;
       navigate('/cadastros/fornecedores'); // Navigate back to the list
     } catch (error: any) {
-      toast.error(`Erro ao atualizar fornecedor: ${error.message}`);
+      ;
     } finally {
       setSaving(false);
     }

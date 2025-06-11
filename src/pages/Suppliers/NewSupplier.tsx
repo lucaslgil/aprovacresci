@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { databaseService, Supplier } from '../../services/database';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+
 // Assuming you have Heroicons or react-icons installed
 import { BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
@@ -43,7 +43,7 @@ export function NewSupplier() {
   const handleCepSearch = async () => {
     const cep = formData.cep.replace(/\D/g, ''); // Remove non-numeric characters
     if (cep.length !== 8) {
-      toast.error('Por favor, insira um CEP válido com 8 dígitos.');
+      ;
       return;
     }
 
@@ -51,13 +51,13 @@ export function NewSupplier() {
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
       if (!response.ok) {
-         toast.error('Erro na comunicação com a API de CEP.');
+         ;
          return;
       }
       const data = await response.json();
 
       if (data.erro) {
-         toast.error('CEP não encontrado.');
+         ;
          setFormData(prevData => ({
             ...prevData,
             endereco: '',
@@ -73,10 +73,10 @@ export function NewSupplier() {
           cidade: data.localidade || '',
           estado: data.uf || '',
         }));
-        toast.success('Endereço preenchido com sucesso!');
+        ;
       }
     } catch (error: any) {
-      toast.error(`Erro ao buscar CEP: ${error.message}`);
+      ;
     } finally {
       setCepLoading(false);
     }
@@ -89,7 +89,7 @@ export function NewSupplier() {
     try {
       // Basic validation (can be expanded)
       if (!formData.nome_fantasia || !formData.razao_social || !formData.cnpj) {
-        toast.error('Nome Fantasia, Razão Social e CNPJ são obrigatórios.');
+        ;
         setLoading(false);
         return;
       }
@@ -108,10 +108,10 @@ export function NewSupplier() {
       };
 
       await databaseService.suppliers.create(newSupplier);
-      toast.success('Fornecedor cadastrado com sucesso!');
+      ;
       navigate('/cadastros/fornecedores'); // Navigate back to the list or a success page
     } catch (error: any) {
-      toast.error(`Erro ao cadastrar fornecedor: ${error.message}`);
+      ;
     } finally {
       setLoading(false);
     }

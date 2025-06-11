@@ -7,8 +7,11 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaTimesCircle,
+  FaCheck,
+  FaTimes,
+  FaThumbsUp,
+  FaThumbsDown,
 } from 'react-icons/fa';
-import { toast } from 'react-toastify';
 
 // Componente de Modal para Motivo
 const ReasonModal = ({ isOpen, onClose, onSubmit, orderId }: { isOpen: boolean, onClose: () => void, onSubmit: (orderId: string, reason: string) => void, orderId: string | null }) => {
@@ -149,14 +152,16 @@ const PurchaseOrderList = ({ orders, handleApprove, handleReject, handleApproveB
                          {order.status === 'Aguardando aprovação' && (
                             <div className="flex justify-end space-x-3">
                                {/* Botão Aprovar (List View) */}
-                              <button className="text-green-600 hover:text-green-900"
-                                  onClick={() => handleApprove(order.id)}
+                              <button 
+                                className="text-green-600 hover:text-green-900 text-sm font-medium"
+                                onClick={() => handleApprove(order.id)}
                               >
                                 Aprovar
                               </button>
                                {/* Botão Rejeitar (List View) */}
-                              <button className="text-red-600 hover:text-red-900"
-                                  onClick={() => handleReject(order.id)}
+                              <button 
+                                className="text-red-600 hover:text-red-900 text-sm font-medium"
+                                onClick={() => handleReject(order.id)}
                               >
                                 Rejeitar
                               </button>
@@ -253,14 +258,18 @@ const PurchaseOrderKanban = ({ orders, handleApprove, handleReject, handleApprov
                   )}
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200"
+                  <button 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                     onClick={() => handleApprove(order.id)}
                   >
+                    <FaThumbsUp className="h-4 w-4 mr-2" />
                     Aprovar
                   </button>
-                  <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+                  <button 
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     onClick={() => handleReject(order.id)}
                   >
+                    <FaThumbsDown className="h-4 w-4 mr-2" />
                     Rejeitar
                   </button>
                 </div>
@@ -296,14 +305,18 @@ const PurchaseOrderKanban = ({ orders, handleApprove, handleReject, handleApprov
                   )}
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200"
+                  <button 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                     onClick={() => handleApproveBudget(order.id)}
                   >
+                    <FaThumbsUp className="h-4 w-4 mr-2" />
                     Aprovar Orçamento
                   </button>
-                  <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+                  <button 
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     onClick={() => handleReject(order.id)}
                   >
+                    <FaThumbsDown className="h-4 w-4 mr-2" />
                     Cancelar
                   </button>
                 </div>
@@ -339,14 +352,18 @@ const PurchaseOrderKanban = ({ orders, handleApprove, handleReject, handleApprov
                   )}
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                  <button
+                    className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     onClick={() => handleRealizePurchase(order.id)}
                   >
+                    <FaThumbsUp className="h-4 w-4 mr-2" />
                     Compra Realizada
                   </button>
-                  <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+                  <button
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     onClick={() => handleReject(order.id)}
                   >
+                    <FaThumbsDown className="h-4 w-4 mr-2" />
                     Cancelar
                   </button>
                 </div>
@@ -382,9 +399,11 @@ const PurchaseOrderKanban = ({ orders, handleApprove, handleReject, handleApprov
                   )}
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200"
+                  <button
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                     onClick={() => handleReject(order.id)}
                   >
+                    <FaThumbsDown className="h-4 w-4 mr-2" />
                     Cancelar
                   </button>
                 </div>
@@ -418,6 +437,22 @@ const PurchaseOrderKanban = ({ orders, handleApprove, handleReject, handleApprov
                   ) : (
                     <p className="mt-2 text-sm text-gray-500">Fornecedor: -</p>
                   )}
+                </div>
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                    onClick={() => handleApprove(order.id)}
+                  >
+                    <FaThumbsUp className="h-4 w-4 mr-2" />
+                    Aprovar
+                  </button>
+                  <button
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    onClick={() => handleReject(order.id)}
+                  >
+                    <FaThumbsDown className="h-4 w-4 mr-2" />
+                    Rejeitar
+                  </button>
                 </div>
               </div>
             ))
@@ -454,7 +489,7 @@ export function ApprovePurchaseOrders() {
     } catch (err: any) {
       console.error('Erro ao carregar ordens:', err);
       setError('Erro ao carregar ordens. Tente novamente.');
-      toast.error('Erro ao carregar ordens.');
+      ;
     } finally {
       setLoading(false);
     }
@@ -470,7 +505,7 @@ export function ApprovePurchaseOrders() {
       console.log('Chamando databaseService.purchaseOrders.approveOrder...'); // Log antes da chamada DB
       await databaseService.purchaseOrders.approveOrder(orderId); // Chamando a função correta do databaseService
       console.log('databaseService.purchaseOrders.approveOrder concluído.'); // Log após a chamada DB
-      toast.success('Ordem de compra aprovada com sucesso!');
+      ;
 
       // Atualizar o estado localmente para refletir a mudança imediata
       setOrders(prevOrders => {
@@ -502,7 +537,7 @@ export function ApprovePurchaseOrders() {
       databaseService.purchaseOrders.rejectOrder(orderId, reason);
       console.log('Chamada databaseService.purchaseOrders.rejectOrder iniciada.');
       
-      toast.success('Ordem de compra cancelada com sucesso.');
+      ;
       
       // Atualizar o estado localmente para refletir a mudança imediata
       setOrders(prevOrders => {
@@ -527,7 +562,7 @@ export function ApprovePurchaseOrders() {
       
     } catch (err: any) {
       console.error('Erro ao cancelar ordem:', err);
-      toast.error('Erro ao cancelar ordem de compra.');
+      ;
     }
   };
 
@@ -538,7 +573,7 @@ export function ApprovePurchaseOrders() {
       console.log('Chamando databaseService.purchaseOrders.approveBudget...');
       await databaseService.purchaseOrders.approveBudget(orderId);
       console.log('databaseService.purchaseOrders.approveBudget concluído.');
-      toast.success('Orçamento aprovado com sucesso!');
+      ;
 
       setOrders(prevOrders => {
         const updatedOrders = prevOrders.map(order =>
@@ -562,7 +597,7 @@ export function ApprovePurchaseOrders() {
         console.log('Chamando databaseService.purchaseOrders.realizePurchase...');
         await databaseService.purchaseOrders.realizePurchase(orderId);
         console.log('databaseService.purchaseOrders.realizePurchase concluído.');
-        toast.success('Compra realizada com sucesso!');
+        ;
 
         setOrders(prevOrders => {
           const updatedOrders = prevOrders.map(order =>

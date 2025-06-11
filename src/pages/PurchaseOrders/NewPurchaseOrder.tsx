@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { databaseService, PurchaseOrder, Supplier } from '../../services/database';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+
 import {
   FaShoppingCart,
   FaUser, // Para Solicitante e Usuário
@@ -55,7 +55,7 @@ export function NewPurchaseOrder() {
         const suppliersData = await databaseService.suppliers.getAll();
         setSuppliers(suppliersData);
       } catch (error: any) {
-        toast.error(`Erro ao carregar fornecedores: ${error.message}`);
+        ;
       } finally {
         setSupplierLoading(false);
       }

@@ -1,6 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://brkkmtiwembjzvupxwcr.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJya2ttdGl3ZW1ianp2dXB4d2NyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1NDY1MzksImV4cCI6MjA2NDEyMjUzOX0.KN_ZMr-xelbDlsznUgvQS6Fy0DgfOjQkPL8R19KOcIA'
+// Log para depuração
+console.log('Variáveis de ambiente carregadas:');
+console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '*** (chave presente)' : 'Não definida');
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Erro: Variáveis de ambiente do Supabase não configuradas corretamente');
+  console.error('Certifique-se de que o arquivo .env contém VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Teste de conexão
+console.log('Inicializando cliente Supabase...');
+console.log('URL do Supabase:', supabaseUrl);
