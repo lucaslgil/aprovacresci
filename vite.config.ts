@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 export default defineConfig({
+  base: '/aprovacresci/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -12,4 +13,4 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-}) 
+})
