@@ -1,36 +1,67 @@
+// Arquivo: src/types/Employee.ts
+
+// Interface alinhada com a tabela 'employees' do Supabase
 export interface Employee {
   id: string;
-  nome: string;
-  cpf: string;
-  cargo: string;
-  setor: string;
+  nome_completo: string;
   email: string;
-  telefone?: string;
-  status: 'ativo' | 'inativo';
-  itensVinculados?: string[]; // IDs dos itens vinculados (Tornado opcional)
-  dataCadastro: Date;
-  dataAtualizacao: Date;
-  salario: number; // Salário atual
-  dataAdmissao: string | null; // Novo campo para Data de Admissão
-  dataDesligamento: string | null; // Novo campo para Data de Desligamento
-  company_id?: string; // ID da empresa à qual o funcionário está vinculado
+  cpf: string;
+  data_nascimento: string | null;
+  data_admissao: string | null;
+  data_desligamento: string | null;
+  cargo: string | null;
+  departamento: string | null;
+  setor: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  telefone: string | null;
+  salario_inicial: number;
+  salario_atual: number;
+  status: string;
+  itens_vinculados?: any[];
+  empresa_id: string | null;
+  company_id: string | null;
+  created_at: string;
+  updated_at: string;
+  data_cadastro: string;
+  data_atualizacao: string;
 }
 
-export interface EmployeeFormData extends Omit<Employee, 'id' | 'dataCadastro' | 'dataAtualizacao' | 'salario' | 'dataAdmissao' | 'dataDesligamento' | 'telefone' | 'itensVinculados' | 'company_id'> {
-  telefone?: string | undefined;
-  itensVinculados?: string[] | undefined;
-  salario?: number | undefined;
-  dataAdmissao?: string | null | undefined;
-  dataDesligamento?: string | null | undefined;
-  company_id?: string | undefined;
+// Interface para o formulário de criação/edição de funcionário
+export interface EmployeeFormData {
+  nome_completo: string;
+  cpf: string;
+  email: string;
+  data_nascimento: string | null;
+  data_admissao: string | null;
+  data_desligamento: string | null;
+  cargo: string | null;
+  departamento: string | null;
+  setor: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  telefone: string | null;
+  salario_inicial: number | null;
+  salario_atual: number | null;
+  status: string;
+  empresa_id: string | null;
+  company_id: string | null;
+  itens_vinculados?: any[] | null;
 }
 
+// Interface para o histórico de salários, alinhada com a tabela 'salary_history'
 export interface SalaryHistory {
   id: string;
   employee_id: string;
   valor_anterior: number;
   valor_novo: number;
-  data_alteracao: Date;
+  data_alteracao: string; // TIMESTAMPTZ vira string
   motivo: string;
   usuario_alteracao: string; // ID do usuário que fez a alteração
+  created_at: string;
+  updated_at: string;
 } 

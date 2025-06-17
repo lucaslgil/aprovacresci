@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { databaseService } from '../services/database';
 import { Company } from '../types/Company';
+import { useCompanies } from '../hooks/useCompanies';
 
 export function useCompanies() {
   const queryClient = useQueryClient();

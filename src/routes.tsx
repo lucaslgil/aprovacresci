@@ -20,6 +20,7 @@ import { ListEmployees } from './pages/Employees/ListEmployees';
 import { EmployeeForm } from './pages/Employees/EmployeeForm';
 import { EmployeeTerm } from './pages/Employees/EmployeeTerm';
 import { EmployeeSalaryHistory } from './pages/Employees/EmployeeSalaryHistory';
+import { ImportEmployees } from './pages/Employees/ImportEmployees';
 // Import components for Companies
 import { CompaniesList } from './pages/Companies/CompaniesList';
 import { NewCompany } from './pages/Companies/NewCompany';
@@ -192,6 +193,22 @@ export const router = createBrowserRouter([
     element: (
       <PrivateRoute>
         <EmployeeTerm />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/salary-history/:id',
+    element: (
+      <PrivateRoute>
+        <EmployeeSalaryHistory />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/employees/import',
+    element: (
+      <PrivateRoute>
+        <ImportEmployees />
       </PrivateRoute>
     ),
   },

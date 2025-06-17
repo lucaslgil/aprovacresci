@@ -14,7 +14,8 @@ import {
   FaSortAlphaDown,
   FaSortAlphaUp,
   FaFilePdf,
-  FaMoneyBillWave
+  FaMoneyBillWave,
+  FaFileImport
 } from 'react-icons/fa';
 
 
@@ -35,7 +36,7 @@ export function ListEmployees() {
     cargo: '',
     status: '',
   });
-  const [sortColumn, setSortColumn] = useState<string | null>('nome');
+  const [sortColumn, setSortColumn] = useState<string | null>('nome_completo');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
@@ -82,8 +83,8 @@ export function ListEmployees() {
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = 
-      employee.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.cpf.includes(searchTerm) ||
+      employee.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (employee.cpf && employee.cpf.includes(searchTerm)) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesSetor = !filters.setor || employee.setor === filters.setor;
@@ -138,6 +139,13 @@ export function ListEmployees() {
               <FaFilter className="h-4 w-4 mr-2" />
               Filtros
             </button>
+            <Link
+              to="/employees/import"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <FaFileImport className="h-4 w-4 mr-2" />
+              Importar Colaboradores
+            </Link>
             <Link
               to="/employees/new"
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -255,11 +263,11 @@ export function ListEmployees() {
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('nome')}
+                  onClick={() => handleSort('nome_completo')}
                 >
                   <div className="flex items-center">
                     Nome
-                    {sortColumn === 'nome' && (
+                    {sortColumn === 'nome_completo' && (
                       sortDirection === 'asc' ? <FaSortAlphaUp className="ml-2" /> : <FaSortAlphaDown className="ml-2" />
                     )}
                   </div>
@@ -315,11 +323,11 @@ export function ListEmployees() {
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('salario')}
+                  onClick={() => handleSort('salario_atual')}
                 >
                   <div className="flex items-center">
                     Salário
-                    {sortColumn === 'salario' && (
+                    {sortColumn === 'salario_atual' && (
                       sortDirection === 'asc' ? <FaSortAlphaUp className="ml-2" /> : <FaSortAlphaDown className="ml-2" />
                     )}
                   </div>
@@ -346,7 +354,7 @@ export function ListEmployees() {
                 sortedEmployees.map((employee) => (
                   <tr key={employee.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{employee.nome}</div>
+                      <div className="text-sm font-medium text-gray-900">{employee.nome_completo}</div>
                       <div className="text-sm text-gray-500">{employee.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -366,7 +374,7 @@ export function ListEmployees() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(employee.salario || 0)}
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(employee.salario_atual || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
@@ -427,7 +435,7 @@ export function ListEmployees() {
                     </h3>
                     <div className="mt-2">
                       <p className="text-sm text-gray-500">
-                        Tem certeza que deseja excluir o colaborador {employeeToDelete.nome}? Esta ação não pode ser desfeita.
+                        Tem certeza que deseja excluir o colaborador {employeeToDelete.nome_completo}? Esta ação não pode ser desfeita.
                       </p>
                     </div>
                   </div>

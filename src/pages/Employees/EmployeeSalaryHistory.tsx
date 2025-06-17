@@ -1,436 +1,422 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { databaseService } from '../../services/database';
+import { employeeService } from '../../services/employeeService';
+import { salaryHistoryService } from '../../services/salaryHistoryService';
 import { Employee, SalaryHistory } from '../../types/Employee';
-import { Item } from '../../services/database';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import {
-  FaUser,
   FaArrowLeft,
-  FaExclamationTriangle,
-  FaMoneyBillWave,
   FaHistory,
   FaCalendarAlt,
-  FaUserEdit,
-  FaCheckCircle,
-  FaFilePdf,
-  FaDownload,
-  FaChartLine,
-  FaEye,
   FaEyeSlash,
-  FaArrowUp,
-  FaArrowDown
+  FaExclamationTriangle,
+  FaChartLine,
 } from 'react-icons/fa';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ChartData, ChartOptions, TooltipItem } from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
 
+// Registrar componentes necessários do Chart.js
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
 
-// Importações para o Chart.js e react-chartjs-2
-import { Line, Chart } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+// --- Tipos Helper ---
+interface LineChartData extends ChartData<'line', number[], string> {}
+interface BarChartData extends ChartData<'bar', number[], string> {}
+interface LineChartOptions extends ChartOptions<'line'> {}
+interface BarChartOptions extends ChartOptions<'bar'> {}
 
-// Importar e registrar elementos para gráfico de barra (para o combo chart)
-import {
-  BarElement,
-  BarController // Necessário para combo chart
-} from 'chart.js';
+// --- Componentes de UI Helper ---
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center" role="status" aria-live="polite">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Carregando dados do funcionário...</p>
+    </div>
+  </div>
+);
 
-// Registrar os componentes necessários do Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  BarController // Registrar BarController para combo chart
+const ErrorMessage = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="bg-red-50 border-l-4 border-red-500 p-4 w-full max-w-md" role="alert">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <FaExclamationTriangle className="h-5 w-5 text-red-500" aria-hidden="true" />
+        </div>
+        <div className="ml-3">
+          <h3 className="text-sm font-medium text-red-800">Erro ao carregar dados</h3>
+          <div className="mt-2 text-sm text-red-700">
+            <p>{message}</p>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={onRetry}
+              className="text-sm font-medium text-red-800 hover:text-red-700 focus:outline-none focus:underline transition duration-150 ease-in-out"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const NotFoundMessage = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center">
+      <FaExclamationTriangle className="mx-auto h-12 w-12 text-gray-400" />
+      <h3 className="mt-2 text-lg font-medium text-gray-900">Funcionário não encontrado</h3>
+      <p className="mt-1 text-gray-500">Não foi possível encontrar o funcionário com o ID fornecido.</p>
+    </div>
+  </div>
 );
 
 export function EmployeeSalaryHistory() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // Hooks de Estado
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [salaryHistory, setSalaryHistory] = useState<SalaryHistory[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [generatingPDF, setGeneratingPDF] = useState(false);
   const [showCharts, setShowCharts] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [id]);
+  // --- Funções Utilitárias Memoizadas ---
+  const safeToDate = useCallback((date: any): Date => {
+    if (!date) return new Date(NaN);
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? new Date(NaN) : d;
+  }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const employeeData = await databaseService.employees.getById(id!);
-      if (employeeData) {
-        setEmployee(employeeData);
-        const history = await databaseService.salaryHistory.getByEmployeeId(id!);
-        // Ordenar o histórico por data_alteracao crescente para o gráfico
-        const sortedHistory = history.sort((a, b) => new Date(a.data_alteracao).getTime() - new Date(b.data_alteracao).getTime());
-        setSalaryHistory(sortedHistory);
+  const formatCurrency = useCallback((value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }, []);
+
+  const formatDate = useCallback((date: any): string => {
+    const d = safeToDate(date);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }, [safeToDate]);
+
+  // Função para formatar data como MM/YYYY
+  const formatMonthYear = useCallback((date: any): string => {
+    const d = safeToDate(date);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
+  }, [safeToDate]);
+
+  // --- Lógica de Carregamento de Dados ---
+  const sortedHistory = useMemo(() => {
+    if (!employee) return [];
+
+    // Se não houver histórico de alterações, exibe apenas o salário inicial
+    if (!salaryHistory || salaryHistory.length === 0) {
+      if (employee.salario_inicial) {
+        return [{
+          id: 'initial',
+          employee_id: employee.id,
+          valor_anterior: employee.salario_inicial,
+          valor_novo: employee.salario_inicial,
+          data_alteracao: employee.data_admissao || new Date(0).toISOString(),
+          motivo: 'Salário Inicial',
+          usuario_alteracao: 'Sistema',
+        }];
       }
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err);
-      setError('Erro ao carregar histórico de salários. Tente novamente.');
-      ;
-    } finally {
-      setLoading(false);
+      return [];
     }
-  };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+    // Ordena o histórico por data
+    const orderedHistory = [...salaryHistory].sort((a, b) => safeToDate(a.data_alteracao).getTime() - safeToDate(b.data_alteracao).getTime());
 
-  const formatDate = (date: any) => {
-    if (!(date instanceof Date) || isNaN(date.getTime()) || typeof date.toLocaleDateString !== 'function') {
-      console.error('Valor inválido ou não-Date passado para formatDate:', date);
-      console.error('Tipo do valor:', typeof date);
-      console.error('É instância de Date?', date instanceof Date);
-      console.error('getTime() resulta em NaN?', isNaN(date?.getTime?.()));
-      console.error('typeof toLocaleDateString:', typeof date?.toLocaleDateString);
-
-      return 'Data inválida';
+    // Monta o histórico formatado, garantindo que o salário anterior de cada alteração seja o valor_novo da alteração anterior
+    const formattedHistory: Omit<SalaryHistory, 'created_at' | 'updated_at'>[] = [];
+    if (employee.salario_inicial) {
+      formattedHistory.push({
+        id: 'initial',
+        employee_id: employee.id,
+        valor_anterior: employee.salario_inicial,
+        valor_novo: employee.salario_inicial,
+        data_alteracao: employee.data_admissao || new Date(0).toISOString(),
+        motivo: 'Salário Inicial',
+        usuario_alteracao: 'Sistema',
+      });
     }
-    return date.toLocaleDateString('pt-BR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDateOnly = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Data inválida';
-      return new Intl.DateTimeFormat('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      }).format(date);
-    } catch (e) {
-      console.error('Erro ao formatar data:', e);
-      return 'Data inválida';
+    for (let i = 0; i < orderedHistory.length; i++) {
+      const prev = i === 0 ? employee.salario_inicial : orderedHistory[i - 1].valor_novo;
+      formattedHistory.push({
+        ...orderedHistory[i],
+        valor_anterior: prev,
+      });
     }
-  };
 
-  // Ordenar histórico salarial por data (mais recente primeiro)
-  const sortedSalaryHistory = [...salaryHistory].sort((a, b) => new Date(b.data_alteracao).getTime() - new Date(a.data_alteracao).getTime());
+    // Adiciona o salário atual como o último ponto, se diferente do último histórico
+    const lastHistory = formattedHistory[formattedHistory.length - 1];
+    if (lastHistory && employee.salario_atual !== lastHistory.valor_novo) {
+      formattedHistory.push({
+        id: 'current',
+        employee_id: employee.id,
+        valor_anterior: lastHistory.valor_novo,
+        valor_novo: employee.salario_atual,
+        data_alteracao: new Date().toISOString(),
+        motivo: 'Salário Atual',
+        usuario_alteracao: 'Sistema',
+      });
+    }
 
-  // Preparar dados para o gráfico de Evolução Salarial (Line Chart)
-  const salaryEvolutionChartData = {
-    labels: sortedSalaryHistory.map(history => formatDate(new Date(history.data_alteracao))), // Datas no eixo X
-    datasets: [
-      {
-        label: 'Salário (R$)',
-        data: sortedSalaryHistory.map(history => history.valor_novo), // Novos valores de salário no eixo Y
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        tension: 0.1,
-        fill: false,
-        yAxisID: 'y', // Liga ao eixo Y principal
-      },
-    ],
-  };
+    return formattedHistory;
+  }, [employee, salaryHistory, safeToDate]);
 
-  const salaryEvolutionChartOptions = {
+  const salaryEvolutionChartData: LineChartData = useMemo(() => {
+    if (!employee) return { labels: [], datasets: [] };
+
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    if (sortedHistory.length > 0) {
+      labels.push(employee.data_admissao ? formatMonthYear(employee.data_admissao) : 'Início');
+      data.push(sortedHistory[0].valor_anterior);
+
+      sortedHistory.forEach(h => {
+        labels.push(formatMonthYear(h.data_alteracao));
+        data.push(h.valor_novo);
+      });
+    } else {
+      labels.push(employee.data_admissao ? formatMonthYear(employee.data_admissao) : 'Salário Atual');
+      data.push(employee.salario_atual);
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Evolução Salarial',
+          data,
+          fill: true,
+          backgroundColor: 'rgba(79, 70, 229, 0.2)',
+          borderColor: 'rgba(79, 70, 229, 1)',
+          tension: 0.1,
+        },
+      ],
+    };
+  }, [employee, sortedHistory, formatMonthYear]);
+
+  const salaryVariationChartData: BarChartData = useMemo(() => {
+    if (sortedHistory.length === 0) return { labels: [], datasets: [] };
+
+    const labels = sortedHistory.map(h => formatDate(h.data_alteracao));
+    const data = sortedHistory.map(h => {
+      const anterior = Number(h.valor_anterior) || 0;
+      const novo = Number(h.valor_novo) || 0;
+      return novo - anterior;
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Variação por Alteração',
+          data,
+          backgroundColor: data.map(d => d >= 0 ? 'rgba(22, 163, 74, 0.6)' : 'rgba(220, 38, 38, 0.6)'),
+          borderColor: data.map(d => d >= 0 ? 'rgba(22, 163, 74, 1)' : 'rgba(220, 38, 38, 1)'),
+          borderWidth: 1,
+        },
+      ],
+    };
+  }, [sortedHistory, formatDate]);
+
+  const chartOptions: LineChartOptions | BarChartOptions = useMemo(() => ({
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Evolução Salarial ao Longo do Tempo',
       },
       tooltip: {
         callbacks: {
-            label: function(context: any) {
-                let label = context.dataset.label || '';
-                if (label) {
-                    label += ': ';
-                }
-                if (context.raw !== null) {
-                    label += formatCurrency(context.raw);
-                }
-                return label;
+          label: function(context: TooltipItem<'line'> | TooltipItem<'bar'>) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
             }
+            if (context.parsed.y !== null) {
+              label += formatCurrency(context.parsed.y);
+            }
+            return label;
+          }
         }
-    }
+      }
     },
     scales: {
-        y: {
-            ticks: {
-                callback: function(value: string | number) {
-                    return formatCurrency(Number(value)); // Formata os valores do eixo Y como moeda
-                }
-            }
-        }
-    }
-  };
-
-  // Preparar dados e opções para o gráfico de Variação Salarial (Combo Bar/Line Chart)
-  const salaryVariationChartData = {
-    labels: sortedSalaryHistory.map(history => formatDate(new Date(history.data_alteracao))), // Datas no eixo X
-    datasets: [
-      {
-        type: 'bar' as const, // Tipo de gráfico: barra
-        label: 'Variação Salarial (R$)',
-        data: sortedSalaryHistory.map(history => history.valor_novo - history.valor_anterior), // Variação no eixo Y
-        backgroundColor: sortedSalaryHistory.map(history =>
-          (history.valor_novo - history.valor_anterior) > 0 ? 'rgba(75, 192, 192, 0.5)' : 'rgba(255, 99, 132, 0.5)' // Cores: verde para aumento, vermelho para redução
-        ),
-        borderColor: sortedSalaryHistory.map(history =>
-          (history.valor_novo - history.valor_anterior) > 0 ? 'rgb(75, 192, 192)' : 'rgb(255, 99, 132)'
-        ),
-        yAxisID: 'y-variation', // Liga a um eixo Y diferente para a variação
-      },
-      {
-        type: 'line' as const, // Tipo de gráfico: linha
-        label: 'Novo Salário (R$)',
-        data: sortedSalaryHistory.map(history => history.valor_novo), // Novos valores de salário no eixo Y
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        tension: 0.1,
-        fill: false,
-        yAxisID: 'y-salary', // Liga a um eixo Y diferente para o salário
-      },
-    ],
-  };
-
-  const salaryVariationChartOptions = {
-    responsive: true,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Variação e Novo Salário ao Longo do Tempo',
-      },
-      tooltip: {
-         callbacks: {
-            label: function(context: any) {
-                let label = context.dataset.label || '';
-                if (label) {
-                    label += ': ';
-                }
-                if (context.raw !== null) {
-                    // Formata como moeda ou apenas o número dependendo do dataset
-                    if (context.dataset.type === 'bar') {
-                        label += formatCurrency(context.raw);
-                    } else {
-                         label += formatCurrency(context.raw);
-                    }
-                }
-                return label;
-            }
-        }
-    }
-    },
-    scales: {
-      y: { // Eixo Y para o primeiro dataset (variação) - pode ser invisível ou compartilhado
-        type: 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        id: 'y-variation',
-         ticks: {
-                callback: function(value: string | number) {
-                    return formatCurrency(Number(value)); // Formata os valores do eixo Y como moeda
-                }
-            }
-      },
-      'y-salary': { // Eixo Y para o segundo dataset (novo salário)
-        type: 'linear' as const,
-        display: true,
-        position: 'right' as const,
-        id: 'y-salary',
-        grid: {
-          drawOnChartArea: false, // Não desenhar linhas de grade para este eixo
+      x: {
+        type: 'category', // Força o eixo X a ser categórico
+        title: {
+          display: true,
+          text: 'MÊS/ANO',
         },
-         ticks: {
-                callback: function(value: string | number) {
-                    return formatCurrency(Number(value)); // Formata os valores do eixo Y como moeda
-                }
-            }
+        ticks: {
+          autoSkip: false,
+          maxRotation: 0,
+          minRotation: 0,
+          color: '#444',
+          font: {
+            size: 12,
+          },
+        },
+        grid: {
+          display: true,
+        },
       },
-    },
-  };
+      y: {
+        min: 0, // Garante que o eixo Y comece em zero
+        ticks: {
+          callback: function(value) {
+            return formatCurrency(Number(value));
+          }
+        }
+      }
+    }
+  }), [formatCurrency]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-sm text-gray-500">Carregando...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // --- Lógica de Carregamento de Dados ---
+  const loadData = useCallback(async () => {
+    if (!id) {
+      setError('ID do funcionário não fornecido.');
+      setLoading(false);
+      return;
+    }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <FaExclamationTriangle className="h-5 w-5 text-red-500 mr-3" />
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    setLoading(true);
+    setError(null);
 
-  if (!employee) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <FaExclamationTriangle className="h-5 w-5 text-yellow-500 mr-3" />
-              <h3 className="text-sm font-medium text-yellow-800">Colaborador não encontrado.</h3>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    try {
+      const emp = await employeeService.getById(id);
+      if (emp) {
+        setEmployee(emp);
+        const history = await salaryHistoryService.getByEmployeeId(id);
+        setSalaryHistory(history);
+      } else {
+        setEmployee(null);
+        setSalaryHistory([]);
+      }
+    } catch (err: any) {
+      console.error("Erro ao carregar dados:", err);
+      setError(err.message || 'Ocorreu um erro desconhecido.');
+      setEmployee(null);
+      setSalaryHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // --- Renderização ---
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message={error} onRetry={loadData} />;
+  if (!employee) return <NotFoundMessage />;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="mx-auto px-4 sm:px-6 lg:px-12">
-        {/* Cabeçalho */}
-        <div className="md:flex md:items-center md:justify-between mb-8">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <FaMoneyBillWave className="h-8 w-8 text-indigo-600 mr-3" />
-              Histórico de Salários
-            </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Histórico de alterações salariais do colaborador {employee.nome}
-            </p>
-          </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
-            <button
-              onClick={() => navigate(`/employees/edit/${employee.id}`)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <FaUserEdit className="h-4 w-4 mr-2" />
-              Editar Colaborador
-            </button>
-            <button
-              onClick={() => navigate('/employees')}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <FaArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </button>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <FaArrowLeft className="mr-2" />
+            Voltar
+          </button>
         </div>
 
-        {/* Informações do Colaborador */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Informações do Colaborador
-            </h3>
+            <div className="md:flex md:items-center md:justify-between">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-2xl font-bold text-gray-900 truncate" title={employee.nome_completo}>
+                  {employee.nome_completo}
+                </h2>
+                <p className="text-sm text-gray-500">{employee.cargo || 'N/A'} • {employee.departamento || 'N/A'}</p>
+              </div>
+              <div className="mt-4 flex md:mt-0 md:ml-4">
+                <button
+                  onClick={() => setShowCharts(!showCharts)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  {showCharts ? <FaEyeSlash className="mr-2" /> : <FaChartLine className="mr-2" />}
+                  {showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-            <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
-              <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Nome</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.nome}</dd>
-              </div>
-              <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Cargo</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.cargo}</dd>
-              </div>
-              <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Setor</dt>
-                <dd className="mt-1 text-sm text-gray-900">{employee.setor}</dd>
-              </div>
+          <div className="mt-6 border-t border-gray-200">
+            <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Salário Atual</dt>
-                <dd className="mt-1 text-sm text-gray-900">{formatCurrency(employee.salario)}</dd>
+                <dd className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(employee.salario_atual)}</dd>
+              </div>
+              <div className="sm:col-span-1">
+                <dt className="text-sm font-medium text-gray-500">Salário Inicial</dt>
+                <dd className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(employee.salario_inicial)}</dd>
               </div>
               <div className="sm:col-span-1">
                 <dt className="text-sm font-medium text-gray-500">Data de Admissão</dt>
-                <dd className="mt-1 text-sm text-gray-900">{formatDateOnly(employee.dataAdmissao)}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{formatDate(employee.data_admissao)}</dd>
               </div>
               <div className="sm:col-span-1">
-                <dt className="text-sm font-medium text-gray-500">Data de Desligamento</dt>
-                <dd className="mt-1 text-sm text-gray-900">{formatDateOnly(employee.dataDesligamento)}</dd>
+                <dt className="text-sm font-medium text-gray-500">Status</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    employee.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {employee.status}
+                  </span>
+                </dd>
               </div>
             </dl>
           </div>
         </div>
 
-        {/* Botão para Exibir/Esconder Gráficos */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowCharts(!showCharts)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            {showCharts ? (
-              <>
-                <FaEyeSlash className="h-4 w-4 mr-2" />
-                Esconder Gráficos
-              </>
-            ) : (
-              <>
-                <FaChartLine className="h-4 w-4 mr-2" />
-                Exibir Gráficos
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Gráficos - Renderizado condicionalmente */}
-        {showCharts && salaryHistory.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 h-80">
-               <Line options={salaryEvolutionChartOptions} data={salaryEvolutionChartData} />
-            </div>
-             <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 h-80">
-               <Chart type='bar' options={salaryVariationChartOptions} data={salaryVariationChartData} />
+        {showCharts && sortedHistory.length === 0 && (
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <div className="text-center">
+              <FaChartLine className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Sem dados para gráficos</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Não há histórico salarial para gerar os gráficos.
+              </p>
             </div>
           </div>
         )}
 
-        {/* Histórico de Salários */}
+        {showCharts && sortedHistory.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 h-80">
+              <h4 className="text-md font-medium text-gray-800 mb-4">Evolução Salarial</h4>
+              <Line options={chartOptions as LineChartOptions} data={salaryEvolutionChartData} />
+            </div>
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 h-80">
+              <h4 className="text-md font-medium text-gray-800 mb-4">Variação por Alteração</h4>
+              <Bar options={chartOptions as BarChartOptions} data={salaryVariationChartData} />
+            </div>
+          </div>
+        )}
+
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-              <FaHistory className="h-5 w-5 text-indigo-600 mr-2" />
-              Histórico de Alterações
-            </h3>
+          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+            <div className="flex items-center">
+              <FaHistory className="h-6 w-6 text-gray-500 mr-3" />
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Histórico de Alterações Salariais</h3>
+            </div>
+            {sortedHistory.length > 0 && (
+              <span className="text-sm text-gray-500">
+                {sortedHistory.length} registro{sortedHistory.length !== 1 ? 's' : ''} encontrado{sortedHistory.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           <div className="border-t border-gray-200">
-            {salaryHistory.length === 0 ? (
+            {sortedHistory.length === 0 ? (
               <div className="px-4 py-5 sm:px-6 text-center text-gray-500">
                 Nenhuma alteração salarial registrada.
               </div>
@@ -439,50 +425,76 @@ export function EmployeeSalaryHistory() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Data
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Valor Anterior
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Novo Valor
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Variação
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Motivo
-                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salário Anterior</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Novo Salário</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variação</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motivo</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {sortedSalaryHistory.map((history) => {
-                      const variacao = history.valor_novo - history.valor_anterior;
-                      const percentual = (variacao / history.valor_anterior) * 100;
+                    {[...sortedHistory].reverse().map((history) => {
+                      const valorAnterior = Number(history.valor_anterior) || 0;
+                      const valorNovo = Number(history.valor_novo) || 0;
+                      const variacao = valorNovo - valorAnterior;
+                      
+                      let percentual = 0;
+                      let percentualFormatado = '0.00';
+                      
+                      if (valorAnterior > 0) {
+                        percentual = ((valorNovo / valorAnterior) - 1) * 100;
+                        percentualFormatado = Math.abs(percentual).toFixed(2);
+                      } else if (valorNovo > 0) {
+                        percentual = 100;
+                        percentualFormatado = '100.00';
+                      }
+                      
+                      const isAumento = variacao > 0;
+                      const isReducao = variacao < 0;
                       
                       return (
-                        <tr key={history.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <tr key={history.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <div className="flex items-center">
-                              <FaCalendarAlt className="h-4 w-4 text-gray-400 mr-2" />
-                              {history.data_alteracao ? formatDate(new Date(history.data_alteracao)) : 'N/A'}
+                              <FaCalendarAlt className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                              {formatDate(history.data_alteracao)}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatCurrency(history.valor_anterior)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                            {formatCurrency(history.valor_novo)}
+                            {formatCurrency(valorAnterior)}
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${history.valor_novo - history.valor_anterior >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <div className="flex items-center">
-                                {history.valor_novo - history.valor_anterior >= 0 ? <FaArrowUp className="mr-1"/> : <FaArrowDown className="mr-1"/>}
-                                {formatCurrency(history.valor_novo - history.valor_anterior)} ({history.valor_anterior !== 0 ? ((history.valor_novo / history.valor_anterior - 1) * 100).toFixed(2) : 'N/A'}%)
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                            {formatCurrency(valorNovo)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col space-y-1">
+                              <span className={`px-2 py-1 inline-flex items-center text-xs leading-4 font-medium rounded ${
+                                isAumento 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : isReducao 
+                                    ? 'bg-red-100 text-red-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {isAumento ? (
+                                  <svg className="h-3 w-3 mr-1 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                                  </svg>
+                                ) : isReducao ? (
+                                  <svg className="h-3 w-3 mr-1 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 13.586 4.707 10.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 15.414 14.586 19H12z" clipRule="evenodd" />
+                                  </svg>
+                                ) : null}
+                                {formatCurrency(Math.abs(variacao))}
+                              </span>
+                              {percentual !== 0 && (
+                                <span className={`text-xs ${isAumento ? 'text-green-600' : 'text-red-600'}`}>
+                                  {isAumento ? '+' : (isReducao ? '-' : '')}{percentualFormatado}%
+                                </span>
+                              )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {history.motivo || 'N/A'}
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {history.motivo || '—'}
                           </td>
                         </tr>
                       );
@@ -496,4 +508,4 @@ export function EmployeeSalaryHistory() {
       </div>
     </div>
   );
-} 
+}

@@ -1,166 +1,392 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { databaseService } from '../../services/database';
-import { Employee, EmployeeFormData, SalaryHistory } from '../../types/Employee';
-import { Item } from '../../services/database';
+import { SalaryIncreaseModal } from '../../components/SalaryIncreaseModal';
+import { EmployeeFormData, Employee } from '../../types/Employee';
 import { 
-  FaUser,
   FaExclamationTriangle,
   FaCheckCircle,
-  FaSearch,
-  FaPlus,
-  FaTrash,
-  FaArrowLeft,
-  FaChevronDown,
-  FaTimes,
-  FaCheck
+  FaArrowLeft
 } from 'react-icons/fa';
-import { Combobox } from '@headlessui/react';
+import { 
+  UserIcon, 
+  IdentificationIcon, 
+  PhoneIcon, 
+  BriefcaseIcon, 
+  BuildingOfficeIcon, 
+  CalendarIcon, 
+  CurrencyDollarIcon, 
+  CheckCircleIcon, 
+  XCircleIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline';
 
-import { useAuthStore } from '../../store/auth';
-import type { Company as CompanyType } from '../../types/Company';
-import { createClient } from '@supabase/supabase-js';
+// Função para formatar valor monetário para exibição (ex: 5000.5 -> '5.000,50')
+const formatCurrency = (value: number | string | null): string => {
+  if (value === null || value === '') return '';
+  const numberValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(numberValue)) return '';
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(numberValue);
+};
 
-// Adicione a configuração do Supabase (ajuste se já existir em outro lugar)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Função para converter valor formatado para número (ex: '5.000,50' -> 5000.5)
+const parseCurrency = (value: string): number => {
+  if (!value) return 0;
+  // Remove todos os pontos de milhar e substitui vírgula por ponto
+  const numberValue = parseFloat(
+    value.replace(/\./g, '').replace(',', '.')
+  );
+  return isNaN(numberValue) ? 0 : numberValue;
+};
+
+// Interface for InputField props
+interface InputFieldProps {
+  icon: React.ReactElement;
+  label: React.ReactNode;
+  name: string;
+  value: string | number | null | undefined;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  type?: string;
+  required?: boolean;
+  readOnly?: boolean;
+  step?: string | number;
+  min?: string | number;
+  className?: string;
+  isCurrency?: boolean; // Nova prop para indicar se é um campo monetário
+}
+
+// Reusable InputField component with explicit types
+const InputField: React.FC<InputFieldProps> = ({ 
+  icon, 
+  label, 
+  name, 
+  value, 
+  onChange, 
+  type = 'text', 
+  required = false, 
+  readOnly = false,
+  step,
+  min,
+  className = '',
+  isCurrency = false
+}) => {
+  // Estado interno para o valor formatado
+  const [displayValue, setDisplayValue] = useState<string>('');
+
+  // Atualiza o valor formatado quando o valor externo muda
+  useEffect(() => {
+    if (isCurrency) {
+      const safeValue = value === null || value === undefined || value === '' ? '' : value;
+      
+      // Se o valor for zero ou '0', formata como '0,00'
+      if (safeValue === 0 || safeValue === '0') {
+        setDisplayValue('0,00');
+        return;
+      }
+      
+      // Garante que o valor seja formatado corretamente
+      if (safeValue) {
+        const numericValue = typeof safeValue === 'string' ? parseFloat(safeValue) : safeValue;
+        if (!isNaN(numericValue)) {
+          setDisplayValue(formatCurrency(numericValue));
+          return;
+        }
+      }
+      
+      // Se não houver valor ou for inválido, define como vazio
+      setDisplayValue('');
+    }
+  }, [value, isCurrency]);
+
+  // Manipulador de perda de foco para campos monetários
+  const handleCurrencyBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/[^0-9,]/g, '');
+    if (!rawValue) {
+      setDisplayValue('');
+      return;
+    }
+    
+    // Formata o valor corretamente ao sair do campo
+    const numericValue = parseCurrency(rawValue);
+    setDisplayValue(formatCurrency(numericValue));
+    
+    // Atualiza o valor no formulário
+    const syntheticEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        name,
+        value: numericValue.toString()
+      }
+    };
+    
+    onChange(syntheticEvent as React.ChangeEvent<HTMLInputElement>);
+  };
+  
+  // Manipulador de mudança para campos monetários
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Remove tudo que não for número
+    const rawValue = e.target.value.replace(/\D/g, '');
+    // Converte para número
+    let numericValue = parseInt(rawValue, 10);
+    if (isNaN(numericValue)) numericValue = 0;
+    // Divide por 100 para obter os centavos
+    const floatValue = numericValue / 100;
+    // Formata para moeda brasileira
+    const formatted = floatValue.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    setDisplayValue(formatted);
+    // Dispara o evento com o valor numérico
+    const syntheticEvent = {
+      ...e,
+      target: {
+        ...e.target,
+        name,
+        value: floatValue
+      }
+    };
+    onChange(syntheticEvent as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  // Estilo base para todos os inputs
+  const baseStyles = 'block w-full pl-10 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-150';
+  
+  // Estilo para campos desabilitados
+  const disabledStyles = readOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white hover:border-gray-400';
+  
+  // Estilo para campos de data
+  const isDateField = type === 'date';
+  const dateStyles = isDateField ? 'pr-10' : '';
+  
+  // Estilo para campos monetários
+  const currencyStyles = isCurrency ? 'text-left pl-14 pr-10' : '';
+  
+  return (
+    <div className="mb-4">
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative rounded-md shadow-sm">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          {React.cloneElement(icon, { 
+            className: `h-5 w-5 text-gray-400 ${isCurrency ? 'opacity-0' : ''}` 
+          })}
+        </div>
+        {isCurrency && (
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <span className="text-gray-700 font-medium ml-1">R$</span>
+          </div>
+        )}
+        <input
+          type={isCurrency ? 'text' : type}
+          name={name}
+          id={name}
+          value={isCurrency ? displayValue : (value || '')}
+          onChange={isCurrency ? handleCurrencyChange : onChange}
+          required={required}
+          readOnly={readOnly}
+          step={step}
+          min={min}
+          inputMode={isCurrency ? 'decimal' : undefined}
+          className={`${baseStyles} ${disabledStyles} ${dateStyles} ${currencyStyles} ${className} ${isCurrency ? 'text-left' : ''}`}
+          onBlur={isCurrency ? handleCurrencyBlur : undefined}
+        />
+        {isDateField && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <CalendarIcon className="h-5 w-5 text-gray-400" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export function EmployeeForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
-  const { user } = useAuthStore();
-
   const [formState, setFormState] = useState<EmployeeFormData>({
-    nome: '',
+    nome_completo: '',
     cpf: '',
     email: '',
-    telefone: '',
-    cargo: '',
+    telefone: null,
+    cargo: null,
+    setor: null,
+    departamento: null,
     status: 'ativo',
-    itensVinculados: [],
-    setor: '',
-    salario: 0,
-    dataAdmissao: '',
-    dataDesligamento: '',
-    company_id: '',
+    salario_atual: null,
+    salario_inicial: null,
+    data_admissao: new Date().toISOString().split('T')[0],
+    data_desligamento: null,
+    data_nascimento: null,
+    endereco: null,
+    cidade: null,
+    estado: null,
+    cep: null,
+    empresa_id: null,
+    company_id: null,
+    itens_vinculados: null,
   });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [availableItems, setAvailableItems] = useState<Item[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Item[]>([]);
-  const [showAvailableItems, setShowAvailableItems] = useState(false);
-  const [query, setQuery] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState<CompanyType | null>(null);
-
-  // Estado para companies
-  const [companies, setCompanies] = useState<CompanyType[]>([]);
-  const [companyId, setCompanyId] = useState('');
+  const [showSalaryIncreaseModal, setShowSalaryIncreaseModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        // Carregar todos os itens para a lista de disponíveis
-        const allItems = await databaseService.items.getAll();
-        setAvailableItems(allItems);
-
-        if (id) {
-          // Se for edição, carregar dados do colaborador
-          const employeeData = await databaseService.employees.getById(id);
-          if (employeeData) {
-            setFormState({
-              nome: employeeData.nome,
-              cpf: employeeData.cpf,
-              email: employeeData.email,
-              telefone: employeeData.telefone || '', // Tratar como string vazia se nulo
-              cargo: employeeData.cargo || '', // Tratar como string vazia se nulo
-              status: employeeData.status.toLowerCase() as 'ativo' | 'inativo', // Garantir minúsculas e tipagem correta
-              itensVinculados: employeeData.itensVinculados || [], // Garantir array vazio se nulo/undefined
-              setor: employeeData.setor || '', // Incluindo setor ao carregar dados para edição
-              salario: employeeData.salario || 0, // Incluindo salário ao carregar dados para edição
-              dataAdmissao: employeeData.dataAdmissao || '',
-              dataDesligamento: employeeData.dataDesligamento || '',
-              company_id: employeeData.company_id || '',
-            });
-            // Popular selectedItems com base nos itensVinculados do colaborador
-            const itemsForEmployee = allItems.filter(item =>
-              (employeeData.itensVinculados || []).includes(item.id)
-            );
-            setSelectedItems(itemsForEmployee);
-          } else {
-            setError('Colaborador não encontrado.');
-            // Redirecionar ou mostrar mensagem de erro
-          }
+        const employeeData = await databaseService.employees.getById(id);
+        if (employeeData) {
+          setFormState({
+            nome_completo: employeeData.nome_completo || '',
+            cpf: formatCPF(employeeData.cpf) || '',
+            email: employeeData.email || '',
+            telefone: employeeData.telefone || null,
+            cargo: employeeData.cargo || null,
+            setor: employeeData.setor || null,
+            departamento: employeeData.departamento || null,
+            status: employeeData.status || 'ativo',
+            salario_atual: employeeData.salario_atual || null,
+            salario_inicial: employeeData.salario_inicial || null,
+            data_admissao: employeeData.data_admissao ? new Date(employeeData.data_admissao).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            data_desligamento: employeeData.data_desligamento ? new Date(employeeData.data_desligamento).toISOString().split('T')[0] : null,
+            data_nascimento: employeeData.data_nascimento ? new Date(employeeData.data_nascimento).toISOString().split('T')[0] : null,
+            endereco: employeeData.endereco || null,
+            cidade: employeeData.cidade || null,
+            estado: employeeData.estado || null,
+            cep: employeeData.cep || null,
+            empresa_id: employeeData.empresa_id || null,
+            company_id: employeeData.company_id || null,
+            itens_vinculados: employeeData.itens_vinculados || null,
+          });
         } else {
-          // Se for novo, apenas carregar itens disponíveis
-          setFormState(prev => ({ ...prev, status: 'ativo' })); // Garantir status inicial correto em caso de criação nova
+          setError('Funcionário não encontrado.');
         }
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
-        setError('Erro ao carregar dados. Tente novamente.');
+        console.error('Erro ao carregar dados do funcionário:', err);
+        setError('Erro ao carregar dados do funcionário. Tente novamente.');
       } finally {
         setLoading(false);
       }
     };
-    
-    // Chamar a função fetchData
-    fetchData();
-  }, [id]); // Dependência do ID para recarregar ao mudar entre new/edit
 
-  // Buscar companies ao carregar o componente
-  useEffect(() => {
-    async function fetchCompanies() {
-      try {
-        let companiesData: CompanyType[] = [];
-        if (databaseService.companies && databaseService.companies.getAll) {
-          companiesData = await databaseService.companies.getAll() as CompanyType[];
+    fetchData();
+  }, [id]);
+
+  const formatCPF = (cpf: string | null): string => {
+    if (!cpf) return '';
+    // Remove qualquer caractere que não seja número
+    const numericCPF = cpf.replace(/\D/g, '');
+    
+    // Aplica a formatação 999.999.999-99
+    return numericCPF
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(\-\d{2})\d+?$/, '$1'); // Limita ao formato 999.999.999-99
+  };
+  
+  
+  const unformatCPF = (cpf: string): string => {
+    // Remove todos os caracteres não numéricos
+    return cpf.replace(/\D/g, '');
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    let parsedValue: string | number | null = value;
+    
+    // Limpa erros de validação anteriores ao começar a edição
+    if (error && error.includes('salário')) {
+      setError(null);
+    }
+    
+    // Aplica formatação de CPF
+    if (name === 'cpf') {
+      parsedValue = formatCPF(value);
+    }
+    // Para campos numéricos, converte para número
+    else if (type === 'number') {
+      parsedValue = value === '' ? null : Number(value);
+      
+      // Validação para garantir que o salário atual não seja menor que o salário inicial
+      if (name === 'salario_atual' && parsedValue !== null) {
+        if (formState.salario_inicial !== null && parsedValue < formState.salario_inicial) {
+          setError('O salário atual não pode ser menor que o salário inicial.');
         }
-        // Busca alternativa direta do Supabase se necessário
-        if (!companiesData || companiesData.length === 0) {
-          const { data, error } = await supabase
-            .from('companies')
-            .select('*')
-            .order('business_name', { ascending: true });
-          if (error) throw error;
-          companiesData = (data || []).filter((c: any) => c.id && c.business_name) as CompanyType[];
+      } 
+      // Validação para garantir que o salário inicial não seja maior que o salário atual
+      else if (name === 'salario_inicial' && parsedValue !== null) {
+        if (formState.salario_atual !== null && parsedValue > formState.salario_atual) {
+          setError('O salário inicial não pode ser maior que o salário atual.');
         }
-        setCompanies(companiesData);
-      } catch (err) {
-        console.error('Erro ao carregar companies:', err);
-        setCompanies([]);
       }
     }
-    fetchCompanies();
-  }, []);
 
-  // Ao editar, carregar company vinculada
-  useEffect(() => {
-    if (id && companies.length > 0) { // Adicionado companies.length > 0 para garantir que as empresas já foram carregadas
-      (async () => {
-        const employeeData = await databaseService.employees.getById(id);
-        if (employeeData) {
-          if (employeeData.company_id) {
-            const company = companies.find(c => c.id === employeeData.company_id);
-            if (company) {
-              setSelectedCompany(company);
-              setCompanyId(company.id);
-              // Garantir que o formState tenha o company_id
-              setFormState(prev => ({
-                ...prev,
-                company_id: company.id
-              }));
-            }
+    setFormState(prevState => ({
+      ...prevState,
+      [name]: parsedValue,
+      ...(name === 'status' && value === 'inativo' && !prevState.data_desligamento && { data_desligamento: new Date().toISOString().split('T')[0] }),
+      ...(name === 'status' && value === 'ativo' && { data_desligamento: null }),
+    }));
+  };
+
+  const handleSalaryUpdate = async (newSalary: number) => {
+    try {
+      // Atualiza o banco de dados primeiro
+      if (id) {
+        await databaseService.employees.update(id, { 
+          salario_atual: newSalary,
+          // Atualiza também o salário inicial se for nulo
+          ...(formState.salario_inicial === null && { salario_inicial: newSalary })
+        });
+      }
+      
+      // Atualiza o estado local após a confirmação do banco de dados
+      setFormState(prev => ({
+        ...prev,
+        salario_atual: newSalary,
+        // Atualiza também o salário inicial se for nulo
+        ...(prev.salario_inicial === null && { salario_inicial: newSalary })
+      }));
+      
+      // Mostra mensagem de sucesso
+      setSuccess('Salário atualizado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao processar atualização de salário:', error);
+      setError('Ocorreu um erro ao processar a atualização do salário. Por favor, tente novamente.');
+      
+      // Recarrega os dados do funcionário para garantir consistência
+      if (id) {
+        try {
+          const employeeData = await databaseService.employees.getById(id);
+          if (employeeData) {
+            setFormState(prev => ({
+              ...prev,
+              salario_atual: employeeData.salario_atual,
+              salario_inicial: employeeData.salario_inicial
+            }));
           }
+        } catch (err) {
+          console.error('Erro ao recarregar dados do funcionário:', err);
         }
-      })();
+      }
     }
-  }, [id, companies]); // Adicionado companies como dependência
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,574 +394,294 @@ export function EmployeeForm() {
     setError(null);
     setSuccess(null);
 
+    // Validação de salário
+    const salarioAtual = formState.salario_atual === null ? null : Number(formState.salario_atual);
+    const salarioInicial = formState.salario_inicial === null ? null : Number(formState.salario_inicial);
+    
+    // Valida se o salário inicial não é maior que o salário atual
+    if (salarioInicial !== null && salarioAtual !== null && salarioInicial > salarioAtual) {
+      setError('O salário inicial não pode ser maior que o salário atual.');
+      setLoading(false);
+      return;
+    }
+    
+    // Valida se o salário atual não é menor que o salário inicial
+    if (salarioInicial !== null && salarioAtual !== null && salarioAtual < salarioInicial) {
+      setError('O salário atual não pode ser menor que o salário inicial.');
+      setLoading(false);
+      return;
+    }
+
+    const dataToSave = {
+      ...formState,
+      cpf: unformatCPF(formState.cpf), // Remove formatação do CPF antes de salvar
+      salario_atual: salarioAtual,
+      salario_inicial: formState.salario_inicial === null ? salarioAtual : salarioInicial,
+    };
+
     try {
-      let savedEmployee: Employee;
-
-      // Prepara os dados para salvar, convertendo strings vazias para null em campos de data
-      const dataToSave = {
-        ...formState,
-        company_id: companyId || formState.company_id, // Usar companyId do estado ou do formState
-        dataAdmissao: formState.dataAdmissao || null,
-        dataDesligamento: formState.dataDesligamento || null
-      };
-
-      if (id) {
-        // Editar colaborador
-        // Verificar se o salário foi alterado para registrar no histórico
-        const employee = await databaseService.employees.getById(id);
-        
-        if (employee && formState.salario !== undefined && employee.salario !== formState.salario) {
-          if (!user) {
-            console.error('Usuário não autenticado para registrar histórico salarial.');
-          } else {
-            const salaryHistoryEntry: Omit<SalaryHistory, 'id'> = {
-              employee_id: id,
-              valor_anterior: employee.salario || 0,
-              valor_novo: formState.salario,
-              data_alteracao: new Date(),
-              motivo: 'Atualização pelo formulário de edição',
-              usuario_alteracao: user.id,
-            };
-            await databaseService.salaryHistory.create(salaryHistoryEntry);
-          }
-        }
-
+      let savedEmployee: Employee | undefined;
+      if (isEditing && id) {
         savedEmployee = await databaseService.employees.update(id, dataToSave);
-        setSuccess('Colaborador atualizado com sucesso!');
       } else {
-        // Criar novo colaborador
         savedEmployee = await databaseService.employees.create(dataToSave);
-        setSuccess('Colaborador cadastrado com sucesso!');
-
-        // Opcional: Registrar o salário inicial como primeiro histórico
-        if (formState.salario !== undefined && formState.salario > 0) {
-          if (!user) {
-            console.error('Usuário não autenticado para registrar histórico salarial inicial.');
-          } else {
-            const salaryHistoryEntry: Omit<SalaryHistory, 'id'> = {
-              employee_id: savedEmployee.id,
-              valor_anterior: 0,
-              valor_novo: formState.salario,
-              data_alteracao: new Date(),
-              motivo: 'Salário inicial cadastrado',
-              usuario_alteracao: user.id,
-            };
-            await databaseService.salaryHistory.create(salaryHistoryEntry);
-          }
-        }
       }
-      // Limpa o formulário se for um novo cadastro
-      if (!id) {
-        setFormState({
-          nome: '',
-          cpf: '',
-          email: '',
-          telefone: '',
-          cargo: '',
-          status: 'ativo',
-          itensVinculados: [],
-          setor: '',
-          salario: 0,
-          dataAdmissao: '',
-          dataDesligamento: '',
-          company_id: '',
-        });
-        setSelectedItems([]);
-        setSelectedCompany(null);
-        setCompanyId('');
+      
+      if (savedEmployee) {
+        setSuccess(`Funcionário ${isEditing ? 'atualizado' : 'cadastrado'} com sucesso!`);
+        setTimeout(() => navigate('/employees'), 2000);
       }
     } catch (err) {
-      console.error('Erro ao salvar colaborador:', err);
-      setError('Erro ao salvar colaborador. Tente novamente.');
+      console.error('Erro ao salvar funcionário:', err);
+      setError('Erro ao salvar funcionário. Verifique os dados e tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    // Se for um campo de data e o valor for vazio, salva como string vazia (será convertido para null no submit)
-    setFormState(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Filtrar empresas com base na busca
-  const filteredCompanies = query === ''
-    ? companies
-    : companies.filter((company) =>
-        company.business_name.toLowerCase().includes(query.toLowerCase())
-      );
-
-  // Handler para selecionar empresa
-  const handleCompanySelect = (company: CompanyType) => {
-    setSelectedCompany(company);
-    setCompanyId(company.id);
-    // Atualiza o formState com o ID da empresa selecionada
-    setFormState(prev => ({
-      ...prev,
-      company_id: company.id
-    }));
-    setQuery('');
-  };
-
-  // Limpar seleção
-  const clearSelection = () => {
-    setSelectedCompany(null);
-    setCompanyId('');
-    setFormState(prev => ({
-      ...prev,
-      company_id: ''
-    }));
-    setQuery('');
-  };
-
-  const filteredItems = availableItems.filter(item =>
-    (item.item?.toLowerCase().includes(searchTerm.toLowerCase()) || '') ||
-    (item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) || '')
-  );
-
-  const handleAddItem = async (item: Item) => {
-    setFormState(prev => ({
-      ...prev,
-      itensVinculados: [...(prev.itensVinculados || []), item.id], // Garantir que prev.itensVinculados seja array
-    }));
-    setSelectedItems(prev => [...prev, item]);
-  };
-
-  const handleRemoveItem = async (item: Item) => {
-    setFormState(prev => ({
-      ...prev,
-      itensVinculados: (prev.itensVinculados || []).filter(id => id !== item.id), // Garantir que prev.itensVinculados seja array
-    }));
-    setSelectedItems(prev => prev.filter(selectedItem => selectedItem.id !== item.id));
-  };
-
-  if (loading && !formState.nome) {
-    return <div className="text-center py-8">Carregando...</div>;
+  if (loading) {
+    return <div>Carregando...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="mx-auto px-4 sm:px-6 lg:px-12">
-        {/* Cabeçalho */}
-        <div className="md:flex md:items-center md:justify-between mb-8">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <FaUser className="h-8 w-8 text-indigo-600 mr-3" />
-              {isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}
-            </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              {isEditing ? 'Atualize os dados do colaborador.' : 'Preencha os dados para cadastrar um novo colaborador.'}
-            </p>
-          </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4">
-            <button
-              onClick={() => navigate('/employees')}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <FaArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </button>
-          </div>
+    <div className="container mx-auto p-6 bg-white rounded-lg shadow-md max-w-6xl">
+      <div className="flex items-center mb-6">
+        <button 
+          onClick={() => navigate('/employees')} 
+          className="text-gray-600 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50"
+        >
+          <FaArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="text-2xl font-bold ml-2 text-gray-800">
+          {isEditing ? 'Editar Funcionário' : 'Novo Funcionário'}
+        </h1>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <FaExclamationTriangle className="inline-block mr-2" />
+          <span className="block sm:inline">{error}</span>
         </div>
+      )}
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <FaCheckCircle className="inline-block mr-2" />
+          <span className="block sm:inline">{success}</span>
+        </div>
+      )}
 
-        {/* Mensagens de Erro e Sucesso */}
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 shadow-sm">
-            <div className="flex items-center">
-              <FaExclamationTriangle className="h-5 w-5 text-red-500 mr-3" />
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
-            </div>
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 shadow-sm">
-            <div className="flex items-center">
-              <FaCheckCircle className="h-5 w-5 text-green-500 mr-3" />
-              <h3 className="text-sm font-medium text-green-800">{success}</h3>
-            </div>
-          </div>
-        )}
-
-        {/* Formulário */}
+      <div className="max-w-5xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {/* Nome Completo */}
-                <div>
-                  <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
-                    Nome Completo *
-                  </label>
-                  <input
-                    type="text"
-                    name="nome"
-                    id="nome"
-                    required
-                    value={formState.nome}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
+          <div className="space-y-8">
+            {/* Seção de Informações Pessoais */}
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Informações Pessoais</h3>
+                <p className="mt-1 text-sm text-gray-500">Dados de identificação do funcionário.</p>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                <div className="sm:col-span-3">
+                  <InputField icon={<UserIcon />} label="Nome Completo" name="nome_completo" value={formState.nome_completo} onChange={handleChange} required />
                 </div>
-
-                {/* CPF */}
-                <div>
-                  <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">
-                    CPF
-                  </label>
-                  <input
-                    type="text"
-                    name="cpf"
-                    id="cpf"
-                    value={formState.cpf}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
+                <div className="sm:col-span-3">
+                  <InputField icon={<IdentificationIcon />} label="CPF" name="cpf" value={formState.cpf} onChange={handleChange} required />
                 </div>
-
-                {/* Cargo */}
-                <div>
-                  <label htmlFor="cargo" className="block text-sm font-medium text-gray-700">
-                    Cargo
-                  </label>
-                  <input
-                    type="text"
-                    name="cargo"
-                    id="cargo"
-                    value={formState.cargo}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
+                <div className="sm:col-span-3">
+                  <InputField icon={<UserIcon />} label="E-mail" name="email" type="email" value={formState.email} onChange={handleChange} />
                 </div>
-
-                {/* Setor */}
-                <div>
-                  <label htmlFor="setor" className="block text-sm font-medium text-gray-700">
-                    Setor
-                  </label>
-                  <input
-                    type="text"
-                    name="setor"
-                    id="setor"
-                    value={formState.setor}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-
-                {/* Company Selection - MOVIDO PARA AQUI */}
-                <div className="mb-4 relative">
-                  <Combobox as="div" value={selectedCompany} onChange={handleCompanySelect} className="relative">
-                    <Combobox.Label className="block text-sm font-medium text-gray-700">
-                      Empresa *
-                    </Combobox.Label>
-                    <div className="relative mt-1">
-                      <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300 sm:text-sm">
-                        <Combobox.Input
-                          className="w-full border border-gray-300 rounded-md py-2 pl-3 pr-10 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm"
-                          displayValue={(company: CompanyType) => company?.business_name || ''}
-                          onChange={(event) => setQuery(event.target.value)}
-                          placeholder="Buscar empresa..."
-                          required
-                        />
-                        <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                          {selectedCompany ? (
-                            <FaTimes
-                              className="h-5 w-5 text-gray-400 hover:text-gray-500"
-                              aria-hidden="true"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                clearSelection();
-                              }}
-                            />
-                          ) : (
-                            <FaChevronDown
-                              className="h-5 w-5 text-gray-400"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </Combobox.Button>
-                      </div>
-                      
-                      <div className="relative z-50">
-                        <Combobox.Options 
-                          className="absolute mt-1 w-full max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm"
-                        >
-                          {filteredCompanies.length === 0 && query !== '' ? (
-                            <div className="relative cursor-default select-none px-4 py-2 text-gray-700">
-                              Nenhuma empresa encontrada.
-                            </div>
-                          ) : (
-                            filteredCompanies.map((company) => (
-                              <Combobox.Option
-                                key={company.id}
-                                value={company}
-                                className={({ active }) =>
-                                  `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                                    active ? 'bg-indigo-600 text-white' : 'text-gray-900'
-                                  }`
-                                }
-                              >
-                                {({ selected, active }) => (
-                                  <>
-                                    <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                      {company.business_name}
-                                    </span>
-                                    {selected && (
-                                      <span
-                                        className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
-                                          active ? 'text-white' : 'text-indigo-600'
-                                        }`}
-                                      >
-                                        <FaCheck className="h-5 w-5" aria-hidden="true" />
-                                      </span>
-                                    )}
-                                  </>
-                                )}
-                              </Combobox.Option>
-                            ))
-                          )}
-                        </Combobox.Options>
-                      </div>
-                    </div>
-                  </Combobox>
-                </div>
-
-                {/* E-mail */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    E-mail
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    id="email"
-                    value={formState.email}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-
-                {/* Telefone */}
-                <div>
-                  <label htmlFor="telefone" className="block text-sm font-medium text-gray-700">
-                    Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    name="telefone"
-                    id="telefone"
-                    value={formState.telefone}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    value={formState.status}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  >
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
-                  </select>
-                </div>
-
-                {/* Salário */}
-                <div>
-                  <label htmlFor="salario" className="block text-sm font-medium text-gray-700">
-                    Salário
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">R$ </span>
-                    </div>
-                    <input
-                      type="number"
-                      name="salario"
-                      id="salario"
-                      value={formState.salario}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="0.01"
-                      className="block w-full pl-7 pr-12 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border-gray-300 rounded-md"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                {/* Data de Admissão */}
-                <div>
-                  <label htmlFor="dataAdmissao" className="block text-sm font-medium text-gray-700">
-                    Data de Admissão
-                  </label>
-                  <input
-                    type="date"
-                    name="dataAdmissao"
-                    id="dataAdmissao"
-                    value={formState.dataAdmissao || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-
-                {/* Data de Desligamento */}
-                <div>
-                  <label htmlFor="dataDesligamento" className="block text-sm font-medium text-gray-700">
-                    Data de Desligamento
-                  </label>
-                  <input
-                    type="date"
-                    name="dataDesligamento"
-                    id="dataDesligamento"
-                    value={formState.dataDesligamento || ''}
-                    onChange={handleInputChange}
-                    className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-
-                {/* Seção de Itens Vinculados */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg col-span-full"> {/* Adicionado col-span-full para ocupar a largura total */}
-                  <div className="px-4 py-5 sm:p-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                      Itens Vinculados
-                    </h3>
-
-                    {/* Lista de Itens Vinculados */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Itens Vinculados</h4>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        {selectedItems.length === 0 ? (
-                          <p className="text-sm text-gray-500 text-center py-4">
-                            Nenhum item vinculado.
-                          </p>
-                        ) : (
-                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {selectedItems.map(item => (
-                              <div
-                                key={item.id}
-                                className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <h5 className="text-sm font-medium text-gray-900">{item.item}</h5>
-                                    <p className="text-sm text-gray-500">Código: {item.codigo}</p>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveItem(item)}
-                                    className="inline-flex items-center p-1 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                  >
-                                    <FaTrash className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Botão para mostrar/esconder itens disponíveis */}
-                    <div className="flex justify-between items-center mb-4 mt-6">
-                      <h4 className="text-sm font-medium text-gray-700">Itens Disponíveis para Vincular</h4>
-                      <button
-                        type="button"
-                        onClick={() => setShowAvailableItems(!showAvailableItems)}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      >
-                        {showAvailableItems ? 'Ocultar' : 'Mostrar'}
-                      </button>
-                    </div>
-
-                    {/* Seção de Itens Disponíveis */}
-                    {showAvailableItems && (
-                      <>
-                        {/* Barra de Pesquisa */}
-                        <div className="mb-4">
-                          <div className="relative rounded-md shadow-sm">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <FaSearch className="h-5 w-5 text-gray-400" />
-                            </div>
-                            <input
-                              type="text"
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-                              placeholder="Pesquisar itens para vincular..."
-                            />
-                          </div>
-                        </div>
-
-                        {/* Lista de Itens */}
-                        <div className="mb-6">
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                              {filteredItems
-                                .filter(item => !selectedItems.some(selected => selected.id === item.id))
-                                .map(item => (
-                                  <div
-                                    key={item.id}
-                                    className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <h5 className="text-sm font-medium text-gray-900">{item.item}</h5>
-                                        <p className="text-sm text-gray-500">Código: {item.codigo}</p>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleAddItem(item)}
-                                        className="inline-flex items-center p-1 border border-transparent rounded-full shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                      >
-                                        <FaPlus className="h-4 w-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                            {filteredItems.filter(item => !selectedItems.some(selected => selected.id === item.id)).length === 0 && (
-                              <p className="text-sm text-gray-500 text-center py-4">
-                                Nenhum item disponível para vincular ou todos já estão vinculados.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                <div className="sm:col-span-3">
+                  <InputField icon={<PhoneIcon />} label="Telefone" name="telefone" value={formState.telefone} onChange={handleChange} />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-5">
-            <div className="flex justify-end space-x-3">
+          {/* Seção de Informações do Cargo */}
+          <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Informações do Cargo</h3>
+              <p className="mt-1 text-sm text-gray-500">Detalhes sobre a posição do funcionário na empresa.</p>
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+              <div className="sm:col-span-2">
+                <InputField 
+                  icon={<BriefcaseIcon className="h-5 w-5 text-gray-400" />} 
+                  label="Cargo" 
+                  name="cargo" 
+                  value={formState.cargo} 
+                  onChange={handleChange} 
+                  className="focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <InputField 
+                  icon={<BuildingOfficeIcon className="h-5 w-5 text-gray-400" />} 
+                  label="Setor" 
+                  name="setor" 
+                  value={formState.setor} 
+                  onChange={handleChange} 
+                  className="focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <InputField 
+                  icon={<CalendarIcon className="h-5 w-5 text-gray-400" />} 
+                  label="Data de Admissão" 
+                  name="data_admissao" 
+                  type="date" 
+                  value={formState.data_admissao} 
+                  onChange={handleChange} 
+                  required 
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    {formState.status === 'ativo' ? (
+                      <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <XCircleIcon className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                  <select 
+                    id="status" 
+                    name="status" 
+                    value={formState.status} 
+                    onChange={handleChange} 
+                    className="block w-full pl-10 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md appearance-none bg-white h-[42px] transition-all duration-150 hover:border-gray-400"
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+              {formState.status === 'inativo' && (
+                <div className="sm:col-span-2">
+                  <InputField 
+                    icon={<CalendarIcon className="h-5 w-5 text-gray-400" />} 
+                    label="Data de Desligamento" 
+                    name="data_desligamento" 
+                    type="date" 
+                    value={formState.data_desligamento} 
+                    onChange={handleChange} 
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Seção de Salário */}
+          <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Salário</h3>
+              <p className="mt-1 text-sm text-gray-500">Informações salariais do funcionário.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="sm:col-span-1 flex flex-col justify-end">
+                  <InputField 
+                    icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
+                    label={<span className="flex items-center">Salário Inicial <span className="text-red-500 ml-1">*</span></span>} 
+                    name="salario_inicial"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formState.salario_inicial ?? ''}
+                    onChange={handleChange}
+                    isCurrency
+                    required
+                    className="max-w-md w-full"
+                  />
+                </div>
+                <div className="sm:col-span-1 flex flex-col justify-end">
+                  <div className="group">
+                    <InputField 
+                      icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
+                      label={
+                        <div className="flex items-center">Salário Atual <span className="text-red-500 ml-1">*</span>
+                          <div className="ml-2 relative flex items-center">
+                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <div className="absolute z-10 hidden group-hover:block w-64 p-2 mt-1 -ml-32 bg-gray-800 text-white text-xs rounded shadow-lg">
+                              Você pode editar o salário atual diretamente ou usar o botão "Ajustar Salário" para registrar um reajuste com histórico.
+                            </div>
+                          </div>
+                        </div>
+                      }
+                      name="salario_atual"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formState.salario_atual ?? ''}
+                      onChange={handleChange}
+                      isCurrency
+                      required
+                      className="max-w-md w-full"
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+              {isEditing && (
+                <div className="flex justify-end pt-1">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowSalaryIncreaseModal(true)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2 transition-colors"
+                  >
+                    <CurrencyDollarIcon className="h-4 w-4" />
+                    Ajustar Salário
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-5 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => navigate('/employees')}
-                className="rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 disabled={loading}
+                className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? 'Salvando...' : (isEditing ? 'Salvar Alterações' : 'Cadastrar Colaborador')}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 118-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Salvando...
+                  </>
+                ) : 'Salvar'}
               </button>
             </div>
           </div>
         </form>
       </div>
+      
+      <SalaryIncreaseModal
+        isOpen={showSalaryIncreaseModal}
+        onClose={() => setShowSalaryIncreaseModal(false)}
+        employeeId={id || ''}
+        currentSalary={formState.salario_atual || 0}
+        onSalaryUpdated={handleSalaryUpdate}
+      />
     </div>
   );
 }
