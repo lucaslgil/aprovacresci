@@ -28,6 +28,7 @@ import { EditCompany } from './pages/Companies/EditCompany';
 // Import components for Access Profiles and User Registration
 import AccessProfiles from './pages/Settings/AccessProfiles';
 import UserRegistration from './pages/Settings/UserRegistration';
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuthStore()
@@ -144,18 +145,22 @@ export const router = createHashRouter([
     ),
   },
   {
-    path: '/settings/access-profiles',
+    path: '/settings/user-registration',
     element: (
       <PrivateRoute>
-        <AccessProfiles />
+        <ProtectedRoute requiredPermissions={['Configurações']}>
+          <UserRegistration />
+        </ProtectedRoute>
       </PrivateRoute>
     ),
   },
   {
-    path: '/settings/user-registration',
+    path: '/settings/access-profiles',
     element: (
       <PrivateRoute>
-        <UserRegistration />
+        <ProtectedRoute requiredPermissions={['Configurações']}>
+          <AccessProfiles />
+        </ProtectedRoute>
       </PrivateRoute>
     ),
   },
@@ -187,7 +192,9 @@ export const router = createHashRouter([
     path: '/employees',
     element: (
       <PrivateRoute>
-        <ListEmployees />
+        <ProtectedRoute requiredPermissions={['Funcionários']}>
+          <ListEmployees />
+        </ProtectedRoute>
       </PrivateRoute>
     ),
   },
@@ -195,7 +202,9 @@ export const router = createHashRouter([
     path: '/employees/new',
     element: (
       <PrivateRoute>
-        <EmployeeForm />
+        <ProtectedRoute requiredPermissions={['Funcionários']}>
+          <EmployeeForm />
+        </ProtectedRoute>
       </PrivateRoute>
     ),
   },
@@ -227,15 +236,9 @@ export const router = createHashRouter([
     path: '/employees/import',
     element: (
       <PrivateRoute>
-        <ImportEmployees />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: '/employees/salary-history/:id',
-    element: (
-      <PrivateRoute>
-        <EmployeeSalaryHistory />
+        <ProtectedRoute requiredPermissions={['Funcionários']}>
+          <ImportEmployees />
+        </ProtectedRoute>
       </PrivateRoute>
     ),
   },

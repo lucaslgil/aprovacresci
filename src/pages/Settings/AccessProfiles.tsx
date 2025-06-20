@@ -26,6 +26,8 @@ const AccessProfiles: React.FC = () => {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<AccessProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchProfiles();
@@ -73,8 +75,8 @@ const AccessProfiles: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profileName.trim()) return;
     setSaving(true);
+    setError(null); // Limpa erro anterior
     try {
       let profileId = editingProfile?.id;
       if (editingProfile) {
@@ -88,10 +90,26 @@ const AccessProfiles: React.FC = () => {
       }
       setShowModal(false);
       fetchProfiles();
-    } catch (err) {
-      setError('Erro ao salvar perfil.');
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao salvar perfil.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Função para remover perfil
+  const handleDeleteProfile = async () => {
+    if (!profileToDelete) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await accessProfileService.remove(profileToDelete.id);
+      setProfileToDelete(null);
+      fetchProfiles();
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao excluir perfil.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -120,7 +138,7 @@ const AccessProfiles: React.FC = () => {
           </thead>
           <tbody>
             {profiles.map((profile) => (
-              <ProfileRow key={profile.id} profile={profile} onEdit={handleEditProfile} />
+              <ProfileRow key={profile.id} profile={profile} onEdit={handleEditProfile} onDelete={setProfileToDelete} />
             ))}
           </tbody>
         </table>
@@ -176,12 +194,37 @@ const AccessProfiles: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Modal de confirmação de exclusão */}
+      {profileToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-red-700">Excluir Perfil</h2>
+            <p className="mb-4">Tem certeza que deseja excluir o perfil <b>{profileToDelete.name}</b>? Esta ação não pode ser desfeita.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-200 rounded"
+                onClick={() => setProfileToDelete(null)}
+                disabled={deleting}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded"
+                onClick={handleDeleteProfile}
+                disabled={deleting}
+              >
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // Componente para exibir cada linha de perfil com permissões
-function ProfileRow({ profile, onEdit }: { profile: AccessProfile, onEdit: (p: AccessProfile) => void }) {
+function ProfileRow({ profile, onEdit, onDelete }: { profile: AccessProfile, onEdit: (p: AccessProfile) => void, onDelete: (p: AccessProfile) => void }) {
   const [perms, setPerms] = React.useState<string[]>([]);
   React.useEffect(() => {
     let mounted = true;
@@ -206,7 +249,12 @@ function ProfileRow({ profile, onEdit }: { profile: AccessProfile, onEdit: (p: A
         >
           Editar
         </button>
-        {/* <button className="text-red-500 hover:underline">Excluir</button> */}
+        <button
+          className="text-red-500 hover:underline"
+          onClick={() => onDelete(profile)}
+        >
+          Excluir
+        </button>
       </td>
     </tr>
   );

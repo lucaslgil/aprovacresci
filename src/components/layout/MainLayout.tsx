@@ -1,6 +1,7 @@
 import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
+import { usePermissionsStore } from '../../store/permissions';
 import logoAprovaCresci from '../../assets/images/logo-aprova-cresci.png';
 import {
   HomeIcon,
@@ -80,6 +81,7 @@ const navigation: NavItem[] = (() => {
 // --- COMPONENTE REUTILIZÁVEL PARA O CONTEÚDO DA SIDEBAR ---
 function SidebarContent() {
   const location = useLocation();
+  const permissions = usePermissionsStore((state) => state.permissions);
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
   const [showConfigPopover, setShowConfigPopover] = useState(false);
   const configBtnRef = useRef<HTMLButtonElement>(null);
@@ -132,10 +134,32 @@ function SidebarContent() {
     setOpenSubmenus(newOpenSubmenus);
   };
 
+  // Filtra menus conforme permissões
+  const filteredNavigation = navigation.filter(item => {
+    // RH só pode acessar Cadastros e seus submenus
+    if (permissions.length > 0 && permissions.every(p => p === 'Funcionários')) {
+      return item.name === 'Cadastros';
+    }
+    // Esconde Configurações se não tiver permissão
+    if (item.name === 'Configurações' && !permissions.includes('Configurações')) {
+      return false;
+    }
+    return true;
+  }).map(item => {
+    if (item.name === 'Cadastros' && permissions.length > 0 && permissions.every(p => p === 'Funcionários')) {
+      // RH só pode acessar submenus de Funcionários
+      return {
+        ...item,
+        submenu: item.submenu?.filter(sub => sub.name === 'Funcionários') || []
+      };
+    }
+    return item;
+  });
+
   return (
     <nav className="flex-1 flex flex-col justify-between space-y-1 px-2 py-4 overflow-y-auto bg-[#002943] text-white">
       <div>
-        {navigation.map((item) => (
+        {filteredNavigation.map((item) => (
           <div key={item.name}>
             {!item.submenu ? (
               <Link
@@ -193,69 +217,71 @@ function SidebarContent() {
         ))}
       </div>
       {/* Botão Configurações fixo no rodapé, agora com popover flutuante fora da sidebar */}
-      <div className="mb-2 relative flex justify-center">
-        <button
-          ref={configBtnRef}
-          type="button"
-          className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left mt-4
-            ${location.pathname.startsWith('/settings') ? 'bg-white bg-opacity-10 text-white font-bold' : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'}`}
-          onClick={() => setShowConfigPopover((prev) => !prev)}
-        >
-          <Cog6ToothIcon className="mr-3 flex-shrink-0 h-6 w-6" />
-          Configurações
-          <ChevronRightIcon className="ml-auto h-5 w-5" />
-        </button>
-        {showConfigPopover && (
-          <>
-            {/* Desktop: popover flutuante */}
-            <div
-              ref={popoverRef}
-              className="hidden lg:block fixed z-50 left-64 bottom-8 w-56 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
-              style={{ minWidth: 220 }}
-            >
-              <Link
-                to="/settings/user-registration"
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-lg hover:bg-gray-100 transition-colors
-                  ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
-                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+      {permissions.includes('Configurações') && (
+        <div className="mb-2 relative flex justify-center">
+          <button
+            ref={configBtnRef}
+            type="button"
+            className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left mt-4
+              ${location.pathname.startsWith('/settings') ? 'bg-white bg-opacity-10 text-white font-bold' : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'}`}
+            onClick={() => setShowConfigPopover((prev) => !prev)}
+          >
+            <Cog6ToothIcon className="mr-3 flex-shrink-0 h-6 w-6" />
+            Configurações
+            <ChevronRightIcon className="ml-auto h-5 w-5" />
+          </button>
+          {showConfigPopover && (
+            <>
+              {/* Desktop: popover flutuante */}
+              <div
+                ref={popoverRef}
+                className="hidden lg:block fixed z-50 left-64 bottom-8 w-56 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
+                style={{ minWidth: 220 }}
               >
-                Cadastro de Usuários
-              </Link>
-              <Link
-                to="/settings/access-profiles"
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-b-lg hover:bg-gray-100 transition-colors
-                  ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
-                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+                <Link
+                  to="/settings/user-registration"
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-lg hover:bg-gray-100 transition-colors
+                    ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
+                  onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+                >
+                  Cadastro de Usuários
+                </Link>
+                <Link
+                  to="/settings/access-profiles"
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-b-lg hover:bg-gray-100 transition-colors
+                    ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
+                  onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+                >
+                  Perfil de Acesso
+                </Link>
+              </div>
+              {/* Mobile: dropdown abaixo do botão */}
+              <div
+                ref={popoverRef}
+                className="block lg:hidden absolute left-0 right-0 bottom-12 mx-2 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
+                style={{ minWidth: 0 }}
               >
-                Perfil de Acesso
-              </Link>
-            </div>
-            {/* Mobile: dropdown abaixo do botão */}
-            <div
-              ref={popoverRef}
-              className="block lg:hidden absolute left-0 right-0 bottom-12 mx-2 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
-              style={{ minWidth: 0 }}
-            >
-              <Link
-                to="/settings/user-registration"
-                className={`flex items-center px-4 py-3 text-base font-medium rounded-t-lg hover:bg-gray-100 transition-colors
-                  ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
-                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
-              >
-                Cadastro de Usuários
-              </Link>
-              <Link
-                to="/settings/access-profiles"
-                className={`flex items-center px-4 py-3 text-base font-medium rounded-b-lg hover:bg-gray-100 transition-colors
-                  ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
-                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
-              >
-                Perfil de Acesso
-              </Link>
-            </div>
-          </>
-        )}
-      </div>
+                <Link
+                  to="/settings/user-registration"
+                  className={`flex items-center px-4 py-3 text-base font-medium rounded-t-lg hover:bg-gray-100 transition-colors
+                    ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
+                  onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+                >
+                  Cadastro de Usuários
+                </Link>
+                <Link
+                  to="/settings/access-profiles"
+                  className={`flex items-center px-4 py-3 text-base font-medium rounded-b-lg hover:bg-gray-100 transition-colors
+                    ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
+                  onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+                >
+                  Perfil de Acesso
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

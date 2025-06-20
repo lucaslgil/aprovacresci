@@ -4,13 +4,13 @@ export const userService = {
   async list() {
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, email, access_profile_id')
-      .order('name');
+      .select('id, email, access_profile_id')
+      .order('email');
     if (error) throw error;
     return data;
   },
 
-  async create(user) {
+  async create(user: { id?: string; name?: string; email: string; access_profile_id?: string }) {
     const { data, error } = await supabase
       .from('users')
       .insert([user])
@@ -19,7 +19,7 @@ export const userService = {
     return data;
   },
 
-  async update(id, updates) {
+  async update(id: string, updates: Partial<{ name: string; email: string; access_profile_id: string }>) {
     const { data, error } = await supabase
       .from('users')
       .update(updates)
@@ -29,7 +29,7 @@ export const userService = {
     return data;
   },
 
-  async remove(id) {
+  async remove(id: string) {
     const { error } = await supabase
       .from('users')
       .delete()

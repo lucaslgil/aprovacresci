@@ -20,7 +20,7 @@ const UserRegistration: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', access_profile_id: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', access_profile_id: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -37,6 +37,10 @@ const UserRegistration: React.FC = () => {
       ]);
       setUsers(usersData || []);
       setProfiles(profilesData || []);
+      // Corrige o perfil selecionado caso não exista mais
+      if (profilesData && profilesData.length > 0 && !profilesData.find(p => p.id === form.access_profile_id)) {
+        setForm(f => ({ ...f, access_profile_id: profilesData[0].id }));
+      }
     } catch {
       setError('Erro ao carregar dados.');
     } finally {
@@ -46,7 +50,7 @@ const UserRegistration: React.FC = () => {
 
   const handleNewUser = () => {
     setEditingUser(null);
-    setForm({ name: '', email: '', access_profile_id: profiles[0]?.id || '' });
+    setForm({ name: '', email: '', password: '', access_profile_id: profiles[0]?.id || '' });
     setShowModal(true);
   };
 
@@ -55,6 +59,7 @@ const UserRegistration: React.FC = () => {
     setForm({
       name: user.name,
       email: user.email,
+      password: '', // senha não é editada aqui
       access_profile_id: user.access_profile_id || profiles[0]?.id || ''
     });
     setShowModal(true);
@@ -69,9 +74,23 @@ const UserRegistration: React.FC = () => {
     setSaving(true);
     try {
       if (editingUser) {
-        await userService.update(editingUser.id, form);
+        // Atualiza apenas o perfil de acesso e nome
+        await userService.update(editingUser.id, {
+          name: form.name,
+          access_profile_id: form.access_profile_id
+        });
       } else {
-        await userService.create(form);
+        // Chamada para endpoint backend de criação de usuário no Auth + tabela users
+        await fetch('/api/createUser', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            access_profile_id: form.access_profile_id
+          })
+        });
       }
       setShowModal(false);
       fetchAll();
@@ -155,6 +174,18 @@ const UserRegistration: React.FC = () => {
                   value={form.email}
                   onChange={handleChange}
                   required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                <input
+                  type="password"
+                  name="password"
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.password}
+                  onChange={handleChange}
+                  required={!editingUser}
+                  autoComplete="new-password"
                 />
               </div>
               <div className="mb-4">
