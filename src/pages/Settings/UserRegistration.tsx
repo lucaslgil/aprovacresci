@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { userService } from '../../services/userService';
 import { accessProfileService } from '../../services/accessProfileService';
+import { FaEdit } from 'react-icons/fa';
 
 interface User {
   id: string;
@@ -136,10 +137,10 @@ const UserRegistration: React.FC = () => {
                 </td>
                 <td className="py-2 px-4 text-center">
                   <button
-                    className="text-blue-600 hover:underline mr-2"
+                    className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-900 font-semibold px-2 py-1 rounded transition-colors mr-2"
                     onClick={() => handleEditUser(user)}
                   >
-                    Editar
+                    <FaEdit className="h-4 w-4" /> Editar
                   </button>
                   {/* <button className="text-red-500 hover:underline">Excluir</button> */}
                 </td>

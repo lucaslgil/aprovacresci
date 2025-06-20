@@ -1,0 +1,12 @@
+/* Topbar com fundo branco e fonte escura, exceto botão sair */
+.giraffe-topbar {
+  background: #fff;
+  color: #002943;
+}
+.giraffe-topbar * {
+  color: #002943 !important;
+}
+.giraffe-topbar .bg-indigo-600,
+.giraffe-topbar .bg-indigo-700 {
+  color: #fff !important;
+}

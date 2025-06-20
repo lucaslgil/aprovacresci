@@ -13,6 +13,7 @@ import {
   XMarkIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import '../../assets/giraffe-topbar.css';
 
 // --- TIPOS ---
 type MainLayoutProps = {
@@ -318,8 +319,8 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
       {/* Menu lateral para desktop (fixo) */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
-            <div className="flex h-20 items-center justify-center px-4 bg-white">
-                <img src={logoAprovaCresci} alt="Logo AprovaCresci" className="w-32 h-16 rounded-full object-contain bg-white"/>
+            <div className="h-20 w-full bg-white p-0 m-0">
+                <img src={logoAprovaCresci} alt="Logo AprovaCresci" className="w-full h-full object-cover bg-white m-0 p-0"/>
             </div>
             <SidebarContent />
         </div>
@@ -327,7 +328,7 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
 
       {/* Conteúdo principal */}
       <div className="lg:pl-64 flex flex-col flex-1">
-        <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-[#002943] shadow">
+        <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 giraffe-topbar shadow">
           <button
             type="button"
             className="px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 lg:hidden"
