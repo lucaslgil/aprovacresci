@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ChartData, ChartOptions, TooltipItem } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
+import React from 'react';
 
 // Registrar componentes necessários do Chart.js
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend);
@@ -69,8 +70,13 @@ const NotFoundMessage = () => (
   </div>
 );
 
-export function EmployeeSalaryHistory() {
-  const { id } = useParams<{ id: string }>();
+interface EmployeeSalaryHistoryProps {
+  employeeId?: string;
+}
+
+export function EmployeeSalaryHistory({ employeeId }: EmployeeSalaryHistoryProps = {}) {
+  const params = useParams<{ id: string }>();
+  const id = employeeId || params.id;
   const navigate = useNavigate();
 
   // Hooks de Estado
@@ -318,30 +324,34 @@ export function EmployeeSalaryHistory() {
   if (!employee) return <NotFoundMessage />;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <FaArrowLeft className="mr-2" />
-            Voltar
-          </button>
-        </div>
+    <div className={employeeId ? '' : 'min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8'}>
+      <div className={employeeId ? '' : 'max-w-7xl mx-auto'}>
+        {/* Só mostra o botão Voltar se NÃO estiver embutido no formulário */}
+        {!employeeId && (
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <FaArrowLeft className="mr-2" />
+              Voltar
+            </button>
+          </div>
+        )}
 
         <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
           <div className="px-4 py-5 sm:px-6">
-            <div className="md:flex md:items-center md:justify-between">
+            <div className="md:flex md:items-center md:justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h2 className="text-2xl font-bold text-gray-900 truncate" title={employee.nome_completo}>
                   {employee.nome_completo}
                 </h2>
                 <p className="text-sm text-gray-500">{employee.cargo || 'N/A'} • {employee.departamento || 'N/A'}</p>
               </div>
-              <div className="mt-4 flex md:mt-0 md:ml-4">
+              <div className="flex-shrink-0 mt-4 md:mt-0">
                 <button
-                  onClick={() => setShowCharts(!showCharts)}
+                  type="button"
+                  onClick={() => setShowCharts((prev) => !prev)}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   {showCharts ? <FaEyeSlash className="mr-2" /> : <FaChartLine className="mr-2" />}

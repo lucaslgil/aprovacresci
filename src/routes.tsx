@@ -1,5 +1,5 @@
 import React from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createHashRouter, Navigate } from 'react-router-dom'
 import { Login } from './pages/Login'
 import { MainLayout } from './components/layout/MainLayout'
 import { useAuthStore } from './store/auth'
@@ -25,6 +25,9 @@ import { ImportEmployees } from './pages/Employees/ImportEmployees';
 import { CompaniesList } from './pages/Companies/CompaniesList';
 import { NewCompany } from './pages/Companies/NewCompany';
 import { EditCompany } from './pages/Companies/EditCompany';
+// Import components for Access Profiles and User Registration
+import AccessProfiles from './pages/Settings/AccessProfiles';
+import UserRegistration from './pages/Settings/UserRegistration';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuthStore()
@@ -40,7 +43,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   return <MainLayout>{children}</MainLayout>
 }
 
-export const router = createBrowserRouter([
+export const router = createHashRouter([
   {
     path: '/login',
     element: <Login />,
@@ -137,6 +140,22 @@ export const router = createBrowserRouter([
       <PrivateRoute>
          <div>Tela de Backup (a ser criada)</div>
         {/* <SettingsBackup /> */}
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/settings/access-profiles',
+    element: (
+      <PrivateRoute>
+        <AccessProfiles />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: '/settings/user-registration',
+    element: (
+      <PrivateRoute>
+        <UserRegistration />
       </PrivateRoute>
     ),
   },
@@ -244,4 +263,8 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
   },
-]) 
+  {
+    path: '*',
+    element: <Navigate to="/login" replace />
+  }
+])

@@ -20,6 +20,7 @@ import {
   XCircleIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import { EmployeeSalaryHistory } from './EmployeeSalaryHistory';
 
 // Função para formatar valor monetário para exibição (ex: 5000.5 -> '5.000,50')
 const formatCurrency = (value: number | string | null): string => {
@@ -345,7 +346,7 @@ export function EmployeeForm() {
     }));
   };
 
-  const handleSalaryUpdate = async (newSalary: number) => {
+  const handleSalaryUpdate = async (newSalary: number, showSuccess = true) => {
     try {
       // Atualiza o banco de dados primeiro
       if (id) {
@@ -355,7 +356,6 @@ export function EmployeeForm() {
           ...(formState.salario_inicial === null && { salario_inicial: newSalary })
         });
       }
-      
       // Atualiza o estado local após a confirmação do banco de dados
       setFormState(prev => ({
         ...prev,
@@ -363,13 +363,13 @@ export function EmployeeForm() {
         // Atualiza também o salário inicial se for nulo
         ...(prev.salario_inicial === null && { salario_inicial: newSalary })
       }));
-      
-      // Mostra mensagem de sucesso
-      setSuccess('Salário atualizado com sucesso!');
+      // Só mostra mensagem de sucesso se solicitado
+      if (showSuccess) {
+        setSuccess('Salário atualizado com sucesso!');
+      }
     } catch (error) {
       console.error('Erro ao processar atualização de salário:', error);
       setError('Ocorreu um erro ao processar a atualização do salário. Por favor, tente novamente.');
-      
       // Recarrega os dados do funcionário para garantir consistência
       if (id) {
         try {
@@ -578,65 +578,48 @@ export function EmployeeForm() {
             </div>
           </div>
 
-          {/* Seção de Salário */}
+          {/* Seção de Salário + Histórico */}
           <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
             <div className="mb-6">
               <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Salário</h3>
               <p className="mt-1 text-sm text-gray-500">Informações salariais do funcionário.</p>
             </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-1 flex flex-col justify-end">
-                  <InputField 
-                    icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
-                    label={<span className="flex items-center">Salário Inicial <span className="text-red-500 ml-1">*</span></span>} 
-                    name="salario_inicial"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formState.salario_inicial ?? ''}
-                    onChange={handleChange}
-                    isCurrency
-                    required
-                    className="max-w-md w-full"
-                  />
-                </div>
-                <div className="sm:col-span-1 flex flex-col justify-end">
-                  <div className="group">
-                    <InputField 
-                      icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
-                      label={
-                        <div className="flex items-center">Salário Atual <span className="text-red-500 ml-1">*</span>
-                          <div className="ml-2 relative flex items-center">
-                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                            </svg>
-                            <div className="absolute z-10 hidden group-hover:block w-64 p-2 mt-1 -ml-32 bg-gray-800 text-white text-xs rounded shadow-lg">
-                              Você pode editar o salário atual diretamente ou usar o botão "Ajustar Salário" para registrar um reajuste com histórico.
-                            </div>
-                          </div>
-                        </div>
-                      }
-                      name="salario_atual"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formState.salario_atual ?? ''}
-                      onChange={handleChange}
-                      isCurrency
-                      required
-                      className="max-w-md w-full"
-                      readOnly
-                    />
-                  </div>
-                </div>
+            <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-center">
+              <div className="flex-1 min-w-[220px] flex items-center">
+                <InputField 
+                  icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
+                  label={<span className="flex items-center">Salário Inicial</span>} 
+                  name="salario_inicial"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formState.salario_inicial ?? ''}
+                  onChange={handleChange}
+                  isCurrency
+                  className="max-w-md w-full"
+                />
+              </div>
+              <div className="flex-1 min-w-[220px] flex items-center">
+                <InputField 
+                  icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
+                  label={<span className="flex items-center">Salário Atual</span>} 
+                  name="salario_atual"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formState.salario_atual ?? ''}
+                  onChange={handleChange}
+                  isCurrency
+                  className="max-w-md w-full"
+                  readOnly
+                />
               </div>
               {isEditing && (
-                <div className="flex justify-end pt-1">
+                <div className="flex min-w-[180px] items-center h-full">
                   <button 
                     type="button" 
                     onClick={() => setShowSalaryIncreaseModal(true)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2 transition-colors"
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2 transition-colors w-full sm:w-auto h-[42px]"
                   >
                     <CurrencyDollarIcon className="h-4 w-4" />
                     Ajustar Salário
@@ -644,6 +627,12 @@ export function EmployeeForm() {
                 </div>
               )}
             </div>
+            {/* Histórico salarial integrado */}
+            {isEditing && id && (
+              <div className="mt-8">
+                <EmployeeSalaryHistory employeeId={id} />
+              </div>
+            )}
           </div>
 
           <div className="pt-5 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">

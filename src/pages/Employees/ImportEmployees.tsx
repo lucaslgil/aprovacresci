@@ -170,7 +170,6 @@ export function ImportEmployees() {
       } else {
         cpfSet.add(row.cpf);
       }
-      
       // Validação de e-mail
       if (row.email) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
@@ -181,7 +180,6 @@ export function ImportEmployees() {
           emailSet.add(row.email.toLowerCase());
         }
       }
-      
       // Validação de salário
       if (row.salario !== null && row.salario !== undefined) {
         if (isNaN(Number(row.salario)) || Number(row.salario) < 0) {
@@ -190,7 +188,6 @@ export function ImportEmployees() {
           errors.push(`Linha ${index + 2}: Salário excede o valor máximo permitido (R$ 1.000.000,00)`);
         }
       }
-
       // Função para converter data para o formato YYYY-MM-DD
       const formatDateForDB = (dateInput: any): string | null => {
         console.log('\n=== formatDateForDB ===');
@@ -273,76 +270,45 @@ export function ImportEmployees() {
       
       // Processar data de admissão
       let dataAdmissao: string | null = null;
-      
-      // Primeiro, tenta converter diretamente do valor bruto
       if (row.data_admissao) {
-        // Se for uma string no formato DD/MM/YYYY
         if (typeof row.data_admissao === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(row.data_admissao)) {
           const [day, month, year] = row.data_admissao.split('/');
           dataAdmissao = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           console.log('Data de admissão convertida diretamente de DD/MM/YYYY:', dataAdmissao);
         } else {
-          // Tenta outros formatos usando a função formatDateForDB
           dataAdmissao = formatDateForDB(row.data_admissao);
         }
       }
-      
-      // Garante que a data esteja no formato YYYY-MM-DD sem informações de timezone
       if (dataAdmissao) {
-        // Remove qualquer informação de timezone e hora, mantendo apenas a data
         dataAdmissao = dataAdmissao.split('T')[0];
-        console.log('Data de admissão formatada para envio:', dataAdmissao);
       } else {
         errors.push(`Linha ${index + 2}: Data de admissão inválida ou não informada (formato esperado: DD/MM/YYYY)`);
-        console.error('Falha ao processar data de admissão. Valor original:', row.data_admissao, 'Tipo:', typeof row.data_admissao);
       }
-      
       // Processar data de desligamento (pode ser nula)
       const dataDesligamento = row.data_desligamento ? formatDateForDB(row.data_desligamento) : null;
-      
-      console.log('\n=== Datas processadas ===');
-      console.log('Data de admissão:', { 
-        original: row.data_admissao, 
-        tipoOriginal: typeof row.data_admissao,
-        processada: dataAdmissao 
-      });
-      
-      if (row.data_desligamento) {
-        console.log('Data de desligamento:', { 
-          original: row.data_desligamento, 
-          tipoOriginal: typeof row.data_desligamento,
-          processada: dataDesligamento 
-        });
-      }
-
       // Dados do funcionário para envio à API
       const employeeData = {
-        nome: row.nome || 'Não informado',
+        nome_completo: row.nome || 'Não informado',
         cpf: row.cpf,
         email: row.email || `${row.cpf}@empresa.com`,
         telefone: row.telefone || undefined,
         cargo: row.cargo || 'Não informado',
+        departamento: null,
         setor: row.setor || 'Não informado',
-        salario: row.salario || null,
-        dataAdmissao: dataAdmissao || null,
-        dataDesligamento: dataDesligamento || null,
+        endereco: null,
+        cidade: null,
+        estado: null,
+        cep: null,
+        salario_inicial: row.salario ?? null,
+        salario_atual: row.salario ?? null,
         status: (row.status as 'ativo' | 'inativo') || 'ativo',
-        itensVinculados: []
+        empresa_id: null,
+        company_id: row.company_id || null,
+        data_nascimento: null,
+        data_admissao: dataAdmissao || null,
+        data_desligamento: dataDesligamento || null,
+        itens_vinculados: [],
       };
-      
-      console.log('Dados do funcionário formatados para envio:', {
-        ...employeeData,
-        dataAdmissao: employeeData.dataAdmissao || 'Não informada',
-        dataDesligamento: employeeData.dataDesligamento || 'Não informada',
-        salario: employeeData.salario || 'Não informado'
-      });
-      
-      console.log('Dados do funcionário a serem enviados:', {
-        ...employeeData,
-        // Garante que as datas sejam mostradas corretamente no log
-        dataAdmissao: employeeData.dataAdmissao || 'Não informada',
-        dataDesligamento: employeeData.dataDesligamento || 'Não informada'
-      });
       return employeeData;
     });
 
@@ -380,21 +346,19 @@ export function ImportEmployees() {
         
         console.log(`Processando funcionário ${currentIndex}/${total}:`, {
           ...emp,
-          // Garante que as datas sejam mostradas corretamente no log
-          dataAdmissao: emp.dataAdmissao || 'Não informada',
-          dataDesligamento: emp.dataDesligamento || 'Não informada'
+          dataAdmissao: emp.data_admissao || 'Não informada',
+          dataDesligamento: emp.data_desligamento || 'Não informada'
         });
         
         try {
           // Atualiza o status de carregamento para mostrar o progresso
           setSuccess(`Importando funcionários... (${currentIndex}/${total})`);
-          
-          const result = await databaseService.employees.create(emp);
+          const result = await databaseService.employees.create({ ...emp, telefone: emp.telefone ?? null });
           console.log(`Funcionário ${currentIndex} importado com sucesso:`, {
             ...result,
             // Garante que as datas sejam mostradas corretamente no log
-            dataAdmissao: result.dataAdmissao || 'Não informada',
-            dataDesligamento: result.dataDesligamento || 'Não informada'
+            dataAdmissao: result.data_admissao || 'Não informada',
+            dataDesligamento: result.data_desligamento || 'Não informada'
           });
           successCount++;
           
@@ -406,7 +370,7 @@ export function ImportEmployees() {
         } catch (error: any) {
           console.error(`Erro ao importar funcionário ${currentIndex}:`, error);
           const errorMessage = error?.message || 'Erro desconhecido';
-          errorDetails.push(`Linha ${currentIndex + 1} (${emp.nome || 'Sem nome'}): ${errorMessage}`);
+          errorDetails.push(`Linha ${currentIndex + 1} (${emp.nome_completo || 'Sem nome'}): ${errorMessage}`);
           
           // Se for um erro de duplicação, continuar para o próximo
           if (errorMessage.includes('já existe') || errorMessage.includes('já está em uso')) {

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { databaseService } from '../../services/database';
 import { Employee } from '../../types/Employee';
 import { Item } from '../../services/database';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import {
-  FaUser,
   FaExclamationTriangle,
   FaCheckCircle,
   FaFilePdf,
@@ -37,7 +36,7 @@ export function EmployeeTerm() {
         setEmployee(employeeData);
         // Carregar itens vinculados
         const itemsData = await Promise.all(
-          (employeeData.itensVinculados ?? []).map(itemId =>
+          (employeeData.itens_vinculados ?? []).map(itemId =>
             databaseService.items.getById(itemId)
           )
         );
@@ -135,7 +134,7 @@ export function EmployeeTerm() {
       y -= 20; // Espaço após a lista de itens
 
       // Texto de introdução às condições
-      const conditionsIntro = `O aparelho será utilizado, exclusivamente, pelo EMPREGADO, ${employee?.nome?.toUpperCase() || '**NOME DO COLABORADOR**'}, que exerce a função ${employee?.cargo || 'NÃO INFORMADO'}, portador do CPF ${employee?.cpf || '**CPF DO COLABORADOR**'}, e sob sua responsabilidade, conforme as seguintes condições:`;
+      const conditionsIntro = `O aparelho será utilizado, exclusivamente, pelo EMPREGADO, ${employee?.nome_completo?.toUpperCase() || '**NOME DO COLABORADOR**'}, que exerce a função ${employee?.cargo || 'NÃO INFORMADO'}, portador do CPF ${employee?.cpf || '**CPF DO COLABORADOR**'}, e sob sua responsabilidade, conforme as seguintes condições:`;
 
       const conditionsIntroLines = conditionsIntro.match(/.{1,90}(\s|$)/g) || [conditionsIntro]; // Quebra de linha aproximada
       conditionsIntroLines.forEach(line => {
@@ -206,7 +205,6 @@ export function EmployeeTerm() {
 
       // Assinatura do Colaborador (esquerda)
       const employeeSignatureText = 'NOME DO COLABORADOR:';
-      const employeeSignatureTextWidth = boldFont.widthOfTextAtSize(employeeSignatureText, signatureSize);
       // Desenha a linha de assinatura primeiro
        currentPage.drawText(signatureLine, {
         x: margin,
@@ -226,7 +224,6 @@ export function EmployeeTerm() {
 
       // Assinatura da Empresa (direita)
       const companySignatureText = 'CRESCI E PERDI FRANCHISING LTDA:';
-      const companySignatureTextWidth = boldFont.widthOfTextAtSize(companySignatureText, signatureSize);
       // Desenha a linha de assinatura primeiro
        currentPage.drawText(signatureLine, {
         x: width - margin - (signatureLine.length * signatureSize * 0.6), // Posição da linha (mantém alinhamento anterior)
@@ -237,7 +234,7 @@ export function EmployeeTerm() {
       });
       // Desenha o texto da assinatura abaixo da linha
       currentPage.drawText(companySignatureText, {
-        x: width - margin - companySignatureTextWidth, // Mantém o alinhamento horizontal
+        x: width - margin - boldFont.widthOfTextAtSize(companySignatureText, signatureSize), // Mantém o alinhamento horizontal
         y: y - 15, // Ajuste vertical para desenhar abaixo da linha
         size: signatureSize,
         font: boldFont,
@@ -268,7 +265,7 @@ export function EmployeeTerm() {
       // Criar link para download
       const link = document.createElement('a');
       link.href = url;
-      link.download = `termo_responsabilidade_${employee?.nome?.replace(/\s+/g, '_').toLowerCase() || 'colaborador'}.pdf`;
+      link.download = `termo_responsabilidade_${employee?.nome_completo?.replace(/\s+/g, '_').toLowerCase() || 'colaborador'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -404,7 +401,7 @@ export function EmployeeTerm() {
               )}
             </ul>
              <p className="mb-4">
-               O aparelho será utilizado, exclusivamente, pelo EMPREGADO, <strong>{employee?.nome || '**NOME DO COLABORADOR**'}</strong>, que exerce a função <strong>{employee?.cargo || 'NÃO INFORMADO'}</strong>, portador do CPF <strong>{employee?.cpf || '**CPF DO COLABORADOR**'}</strong>, e sob sua responsabilidade, conforme as seguintes condições:
+               O aparelho será utilizado, exclusivamente, pelo EMPREGADO, <strong>{employee?.nome_completo || '**NOME DO COLABORADOR**'}</strong>, que exerce a função <strong>{employee?.cargo || 'NÃO INFORMADO'}</strong>, portador do CPF <strong>{employee?.cpf || '**CPF DO COLABORADOR**'}</strong>, e sob sua responsabilidade, conforme as seguintes condições:
              </p>
             <ol className="list-decimal list-inside space-y-2 mb-4">
                <li>O equipamento deverá ser utilizado ÚNICA E EXCLUSIVAMENTE a serviço da empresa tendo em vista a atividade exercida pelo EMPREGADO, supra informado.</li>
@@ -431,4 +428,4 @@ export function EmployeeTerm() {
       </div>
     </div>
   );
-} 
+}

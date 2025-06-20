@@ -1,7 +1,7 @@
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
-import logo from '../../assets/images/logo-aprova-cresci.png.jpg'; // Verifique se o caminho do logo está correto
+import logoAprovaCresci from '../../assets/images/logo-aprova-cresci.png';
 import {
   HomeIcon,
   CubeIcon,
@@ -26,8 +26,9 @@ type NavItem = {
 };
 
 // --- DADOS DE NAVEGAÇÃO ---
-const navigation: NavItem[] = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+const navigation: NavItem[] = (() => {
+  // Itens originais
+  const items: NavItem[] = [
     {
       name: 'Inventário',
       href: '/inventory',
@@ -57,18 +58,49 @@ const navigation: NavItem[] = [
         { name: 'Funcionários', href: '/employees' },
       ],
     },
-    {
-      name: 'Configurações',
-      href: '/configuracoes',
-      icon: Cog6ToothIcon,
-      submenu: [{ name: 'Backup', href: '/configuracoes/backup' }],
-    },
-];
+  ];
+
+  // Ordena submenus de cada item
+  items.forEach(item => {
+    if (item.submenu) {
+      item.submenu.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    }
+  });
+
+  // Ordena os itens principais (exceto Dashboard)
+  items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+  // Dashboard sempre primeiro
+  return [
+    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    ...items
+  ];
+})();
 
 // --- COMPONENTE REUTILIZÁVEL PARA O CONTEÚDO DA SIDEBAR ---
 function SidebarContent() {
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<Set<string>>(new Set());
+  const [showConfigPopover, setShowConfigPopover] = useState(false);
+  const configBtnRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o popover ao clicar fora (mas não no clique do link)
+  useEffect(() => {
+    if (!showConfigPopover) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node) &&
+        configBtnRef.current &&
+        !configBtnRef.current.contains(event.target as Node)
+      ) {
+        setTimeout(() => setShowConfigPopover(false), 100); // Pequeno delay para garantir o clique
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showConfigPopover]);
 
   // Abre o submenu ativo quando a página é carregada ou a rota muda
   useEffect(() => {
@@ -101,63 +133,129 @@ function SidebarContent() {
   };
 
   return (
-    <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
-      {navigation.map((item) => (
-        <div key={item.name}>
-          {!item.submenu ? (
-            <Link
-              to={item.href}
-              className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                isActive(item.href)
-                  ? 'bg-gray-200 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <item.icon className="mr-3 flex-shrink-0 h-6 w-6" />
-              {item.name}
-            </Link>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => toggleSubmenu(item.name)}
-                className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full text-left ${
-                  isActive(item.href, true)
-                    ? 'bg-gray-200 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    <nav className="flex-1 flex flex-col justify-between space-y-1 px-2 py-4 overflow-y-auto bg-[#002943] text-white">
+      <div>
+        {navigation.map((item) => (
+          <div key={item.name}>
+            {!item.submenu ? (
+              <Link
+                to={item.href}
+                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                  isActive(item.href)
+                    ? 'bg-white bg-opacity-10 text-white font-bold'
+                    : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'
                 }`}
               >
-                <span className="flex items-center">
-                    <item.icon className="mr-3 flex-shrink-0 h-6 w-6" />
-                    {item.name}
-                </span>
-                <ChevronRightIcon
-                  className={`ml-auto h-5 w-5 transform transition-transform duration-200 ${
-                    openSubmenus.has(item.name) ? 'rotate-90' : 'rotate-0'
+                <item.icon className="mr-3 flex-shrink-0 h-6 w-6" />
+                {item.name}
+              </Link>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => toggleSubmenu(item.name)}
+                  className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md w-full ${
+                    isActive(item.href, true)
+                      ? 'bg-white bg-opacity-10 text-white font-bold'
+                      : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'
                   }`}
-                />
-              </button>
-              {openSubmenus.has(item.name) && (
-                <div className="ml-9 mt-1 space-y-1">
-                  {item.submenu.map((subItem) => (
-                    <Link
-                      key={subItem.name}
-                      to={subItem.href}
-                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full ${
-                        isActive(subItem.href)
-                          ? 'text-gray-900 font-semibold'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      }`}
-                    >
-                      {subItem.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      ))}
+                >
+                  <span className="flex items-center">
+                      <item.icon className="mr-3 flex-shrink-0 h-6 w-6" />
+                      {item.name}
+                  </span>
+                  <ChevronRightIcon
+                    className={`ml-auto h-5 w-5 transform transition-transform duration-200 ${
+                      openSubmenus.has(item.name) ? 'rotate-90' : 'rotate-0'
+                    }`}
+                  />
+                </button>
+                {openSubmenus.has(item.name) && (
+                  <div className="ml-9 mt-1 space-y-1">
+                    {item.submenu.map((subItem) => (
+                      <Link
+                        key={subItem.name}
+                        to={subItem.href}
+                        className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full ${
+                          isActive(subItem.href)
+                            ? 'text-white font-semibold'
+                            : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'
+                        }`}
+                      >
+                        {subItem.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Botão Configurações fixo no rodapé, agora com popover flutuante fora da sidebar */}
+      <div className="mb-2 relative flex justify-center">
+        <button
+          ref={configBtnRef}
+          type="button"
+          className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left mt-4
+            ${location.pathname.startsWith('/settings') ? 'bg-white bg-opacity-10 text-white font-bold' : 'text-white hover:bg-white hover:bg-opacity-10 hover:text-white'}`}
+          onClick={() => setShowConfigPopover((prev) => !prev)}
+        >
+          <Cog6ToothIcon className="mr-3 flex-shrink-0 h-6 w-6" />
+          Configurações
+          <ChevronRightIcon className="ml-auto h-5 w-5" />
+        </button>
+        {showConfigPopover && (
+          <>
+            {/* Desktop: popover flutuante */}
+            <div
+              ref={popoverRef}
+              className="hidden lg:block fixed z-50 left-64 bottom-8 w-56 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
+              style={{ minWidth: 220 }}
+            >
+              <Link
+                to="/settings/user-registration"
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-lg hover:bg-gray-100 transition-colors
+                  ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
+                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+              >
+                Cadastro de Usuários
+              </Link>
+              <Link
+                to="/settings/access-profiles"
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-b-lg hover:bg-gray-100 transition-colors
+                  ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
+                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+              >
+                Perfil de Acesso
+              </Link>
+            </div>
+            {/* Mobile: dropdown abaixo do botão */}
+            <div
+              ref={popoverRef}
+              className="block lg:hidden absolute left-0 right-0 bottom-12 mx-2 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-200 animate-fade-in"
+              style={{ minWidth: 0 }}
+            >
+              <Link
+                to="/settings/user-registration"
+                className={`flex items-center px-4 py-3 text-base font-medium rounded-t-lg hover:bg-gray-100 transition-colors
+                  ${location.pathname.startsWith('/settings/user-registration') ? 'bg-blue-50 text-blue-700' : ''}`}
+                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+              >
+                Cadastro de Usuários
+              </Link>
+              <Link
+                to="/settings/access-profiles"
+                className={`flex items-center px-4 py-3 text-base font-medium rounded-b-lg hover:bg-gray-100 transition-colors
+                  ${location.pathname.startsWith('/settings/access-profiles') ? 'bg-blue-50 text-blue-700' : ''}`}
+                onClick={() => setTimeout(() => setShowConfigPopover(false), 50)}
+              >
+                Perfil de Acesso
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
     </nav>
   );
 }
@@ -182,7 +280,7 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
         }`}
       >
         <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
-            <img src={logo} alt="AprovaCresci Logo" className="h-10 w-auto"/>
+            <img src={logoAprovaCresci} alt="Logo AprovaCresci" className="h-10 w-auto"/>
             <button onClick={() => setSidebarOpen(false)}>
                 <span className="sr-only">Fechar menu</span>
                 <XMarkIcon className="h-6 w-6" />
@@ -194,8 +292,8 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
       {/* Menu lateral para desktop (fixo) */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
-            <div className="flex h-16 items-center justify-center px-4">
-                <img src={logo} alt="AprovaCresci Logo" className="h-10 w-auto"/>
+            <div className="flex h-20 items-center justify-center px-4 bg-white">
+                <img src={logoAprovaCresci} alt="Logo AprovaCresci" className="w-32 h-16 rounded-full object-contain bg-white"/>
             </div>
             <SidebarContent />
         </div>
@@ -203,7 +301,7 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
 
       {/* Conteúdo principal */}
       <div className="lg:pl-64 flex flex-col flex-1">
-        <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white shadow">
+        <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-[#002943] shadow">
           <button
             type="button"
             className="px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 lg:hidden"
@@ -214,7 +312,7 @@ export function MainLayout({ children }: MainLayoutProps): JSX.Element {
           </button>
           <div className="flex flex-1 justify-end px-4">
             <div className="flex items-center">
-              <span className="text-sm text-gray-600 mr-4">{user?.email}</span>
+              <span className="text-sm text-white mr-4">{user?.email}</span>
               <button
                 onClick={() => signOut()}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

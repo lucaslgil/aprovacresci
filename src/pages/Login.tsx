@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { supabase } from '../services/supabase'
+import logoAprovaCresci from '../assets/images/logo-aprova-cresci.png'
 
 export function Login() {
   const [email, setEmail] = useState('')
@@ -34,12 +35,19 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            AprovaCresci
-          </h2>
+    <div
+      className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+      style={{
+        backgroundImage: `url(${logoAprovaCresci})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      <div className="max-w-md w-full space-y-8 bg-white bg-opacity-90 rounded-lg p-8 shadow-lg">
+        <div className="flex flex-col items-center">
+          {/* <img src={logoAprovaCresci} alt="Logo AprovaCresci" className="h-24 w-auto mb-2" /> */}
+          {/* <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">AprovaCresci</h2> */}
           <p className="mt-2 text-center text-sm text-gray-600">
             Faça login para acessar o sistema
           </p>
@@ -103,4 +111,4 @@ export function Login() {
       </div>
     </div>
   )
-} 
+}

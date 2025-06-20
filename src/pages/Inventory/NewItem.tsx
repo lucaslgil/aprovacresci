@@ -322,7 +322,7 @@ export function NewItem() {
         <div className="md:flex md:items-center md:justify-between mb-8">
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <FaBox className="h-8 w-8 text-indigo-600 mr-3" />
+              <FaBox className="h-8 w-8 text-[#002943] mr-3" />
               {isEditing ? 'Alterar Item' : 'Novo Item'}
             </h1>
             <p className="mt-2 text-sm text-gray-600">
@@ -360,7 +360,7 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <QrCodeIcon className="h-5 w-5 text-indigo-500" />
+                      <QrCodeIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
@@ -369,7 +369,7 @@ export function NewItem() {
                       required
                       className={`block w-full pl-10 pr-3 py-2 border ${
                         codeError ? 'border-red-300' : 'border-gray-300'
-                      } rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base ${
+                      } rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base ${
                         isEditing ? 'bg-gray-100' : ''
                       }`}
                       placeholder="000001"
@@ -390,14 +390,14 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <CubeIcon className="h-5 w-5 text-indigo-500" />
+                      <CubeIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="item"
                       id="item"
                       required
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o nome do item"
                       value={formData.item}
                       onChange={handleInputChange}
@@ -412,13 +412,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <DocumentTextIcon className="h-5 w-5 text-indigo-500" />
+                      <DocumentTextIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="modelo"
                       id="modelo"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o modelo do item"
                       value={formData.modelo || ''}
                       onChange={handleInputChange}
@@ -433,13 +433,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <QrCodeIcon className="h-5 w-5 text-indigo-500" />
+                      <QrCodeIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="numero_serie"
                       id="numero_serie"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o número de série"
                       value={formData.numero_serie || ''}
                       onChange={handleInputChange}
@@ -454,13 +454,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute top-3 left-3 flex items-start pointer-events-none">
-                      <DocumentTextIcon className="h-5 w-5 text-indigo-500" />
+                      <DocumentTextIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <textarea
                       id="detalhes"
                       name="detalhes"
                       rows={3}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite detalhes adicionais sobre o item"
                       value={formData.detalhes || ''}
                       onChange={handleInputChange}
@@ -475,13 +475,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <DocumentTextIcon className="h-5 w-5 text-indigo-500" />
+                      <DocumentTextIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="nota_fiscal"
                       id="nota_fiscal"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o número da nota fiscal"
                       value={formData.nota_fiscal || ''}
                       onChange={handleInputChange}
@@ -502,7 +502,7 @@ export function NewItem() {
                       type="number"
                       name="valor_aproximado"
                       id="valor_aproximado"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="0.00"
                       value={formData.valor_aproximado || ''}
                       onChange={handleInputChange}
@@ -518,13 +518,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <TruckIcon className="h-5 w-5 text-indigo-500" />
+                      <TruckIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       id="supplier_text"
                       name="supplier_text"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o nome do fornecedor"
                       value={supplierText}
                       onChange={handleSupplierTextChange}
@@ -556,13 +556,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <BuildingOffice2Icon className="h-5 w-5 text-indigo-500" />
+                      <BuildingOffice2Icon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="setor"
                       id="setor"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o nome do setor"
                       value={formData.setor || ''}
                       onChange={handleInputChange}
@@ -577,13 +577,13 @@ export function NewItem() {
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <UserIcon className="h-5 w-5 text-indigo-500" />
+                      <UserIcon className="h-5 w-5 text-[#002943]" />
                     </div>
                     <input
                       type="text"
                       name="responsavel"
                       id="responsavel"
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                       placeholder="Digite o nome do responsável"
                       value={formData.responsavel || ''}
                       onChange={handleInputChange}
@@ -602,7 +602,7 @@ export function NewItem() {
                      <select
                        id="status"
                        name="status"
-                       className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                       className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base"
                        value={formData.status}
                        onChange={handleInputChange}
                      >
@@ -627,7 +627,7 @@ export function NewItem() {
                         id="motivo_descarte"
                         name="motivo_descarte"
                         rows={3}
-                        className={`block w-full pl-3 pr-3 py-2 border ${!motivoDescarte ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base`}
+                        className={`block w-full pl-3 pr-3 py-2 border ${!motivoDescarte ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:ring-[#002943] focus:border-[#002943] sm:text-base`}
                         placeholder="Descreva o motivo pelo qual o item foi descartado"
                         value={motivoDescarte || ''}
                         onChange={handleInputChange}
@@ -649,24 +649,24 @@ export function NewItem() {
                 onClick={() => setShowDeleteModal(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                <FaTrash className="h-4 w-4 mr-2" />
+                <FaTrash className="h-4 w-4 mr-2 text-[#002943]" />
                 Excluir Item
               </button>
             )}
             <button
               type="button"
               onClick={handleCancel}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-[#002943] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#002943]"
             >
-              <FaTimes className="h-4 w-4 mr-2 text-gray-500" />
+              <FaTimes className="h-4 w-4 mr-2 text-[#002943]" />
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading || !!codeError || !formData.item || !formData.codigo}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#002943] hover:bg-[#003366] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#002943] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FaSave className="h-4 w-4 mr-2" />
+              <FaSave className="h-4 w-4 mr-2 text-white" />
               {loading ? (isEditing ? 'Atualizando...' : 'Salvando...') : (isEditing ? 'Atualizar' : 'Salvar')}
             </button>
           </div>
@@ -712,7 +712,7 @@ export function NewItem() {
                 </button>
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#002943] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setShowDeleteModal(false)}
                 >
                   Cancelar
@@ -726,4 +726,4 @@ export function NewItem() {
   );
 }
 
-export default NewItem; 
+export default NewItem;
