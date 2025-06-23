@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { accessProfileService } from '../../services/accessProfileService';
 import { accessPermissionService } from '../../services/accessPermissionService';
-import { FaEdit, FaTrash, FaUserShield } from 'react-icons/fa';
-import { UserGroupIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, UserGroupIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 
 interface AccessProfile {
   id: string;
@@ -30,6 +30,7 @@ const AccessProfiles: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<AccessProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [permissionSearch, setPermissionSearch] = useState('');
 
   useEffect(() => {
     fetchProfiles();
@@ -106,14 +107,17 @@ const AccessProfiles: React.FC = () => {
     setError(null);
     try {
       await accessProfileService.remove(profileToDelete.id);
-      setProfiles((prev) => prev.filter((p) => p.id !== profileToDelete.id)); // Remove localmente
       setProfileToDelete(null);
+      fetchProfiles();
     } catch (err: any) {
       setError(err?.message || 'Erro ao excluir perfil.');
     } finally {
       setDeleting(false);
     }
   };
+
+  // Filtra as permissões com base na pesquisa
+  const filteredPermissions = PERMISSIONS.filter(perm => perm.toLowerCase().includes(permissionSearch.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -122,7 +126,7 @@ const AccessProfiles: React.FC = () => {
         <div className="md:flex md:items-center md:justify-between mb-8">
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <FaUserShield className="h-8 w-8 text-indigo-600 mr-3" />
+              <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
               Perfis de Acesso
             </h1>
             <p className="mt-2 text-sm text-gray-600">
@@ -142,7 +146,7 @@ const AccessProfiles: React.FC = () => {
         {error && (
           <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 shadow-sm">
             <div className="flex items-center">
-              <FaUserShield className="h-5 w-5 text-red-500 mr-3" />
+              <ShieldCheckIcon className="h-5 w-5 text-red-500 mr-3" />
               <h3 className="text-sm font-medium text-red-800">{error}</h3>
             </div>
           </div>
@@ -173,13 +177,13 @@ const AccessProfiles: React.FC = () => {
         {/* Modal de cadastro/edição de perfil */}
         {showModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-100 p-8 w-full max-w-2xl animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl border-2 border-blue-100 p-8 w-full max-w-md animate-fade-in">
               <h2 className="text-2xl font-bold mb-4 text-[#002943] flex items-center gap-2">
-                <FaUserShield className="h-6 w-6 text-[#002943]" />
+                <Cog6ToothIcon className="h-6 w-6 text-[#002943]" />
                 {editingProfile ? 'Editar Perfil' : 'Novo Perfil'}
               </h2>
-              <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-[#002943] mb-1">Nome do Perfil</label>
                     <input
@@ -193,19 +197,31 @@ const AccessProfiles: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#002943] mb-2">Permissões</label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {PERMISSIONS.map((perm) => (
-                        <label key={perm} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="accent-[#002943] h-4 w-4 rounded"
-                            checked={selectedPermissions.includes(perm)}
-                            onChange={() => handlePermissionChange(perm)}
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Buscar permissão..."
+                      value={permissionSearch}
+                      onChange={e => setPermissionSearch(e.target.value)}
+                      disabled={saving}
+                    />
+                    <div className="max-h-48 overflow-y-auto border border-blue-100 rounded-lg bg-white divide-y divide-blue-50 shadow-sm">
+                      {filteredPermissions.length === 0 ? (
+                        <div className="p-3 text-gray-400 text-sm text-center">Nenhuma permissão encontrada</div>
+                      ) : (
+                        filteredPermissions.map((perm) => (
+                          <button
+                            type="button"
+                            key={perm}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${selectedPermissions.includes(perm) ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-blue-50 text-[#002943]'}`}
+                            onClick={() => handlePermissionChange(perm)}
                             disabled={saving}
-                          />
-                          <span className="text-[#002943]">{perm}</span>
-                        </label>
-                      ))}
+                          >
+                            <span className={`inline-block w-4 h-4 border-2 rounded ${selectedPermissions.includes(perm) ? 'bg-blue-600 border-blue-600' : 'border-blue-300 bg-white'} mr-2 flex-shrink-0`}>{selectedPermissions.includes(perm) && <span className="block w-2 h-2 bg-white rounded mx-auto my-auto" />}</span>
+                            {perm}
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -231,7 +247,7 @@ const AccessProfiles: React.FC = () => {
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
             <div className="bg-white rounded-2xl shadow-2xl border-2 border-red-200 p-8 w-full max-w-md animate-fade-in">
               <h2 className="text-2xl font-bold mb-4 text-red-700 flex items-center gap-2">
-                <FaUserShield className="h-6 w-6 text-red-700" />
+                <ShieldCheckIcon className="h-6 w-6 text-red-700" />
                 Excluir Perfil
               </h2>
               <p className="mb-4 text-[#002943]">Tem certeza que deseja excluir o perfil <b>{profileToDelete.name}</b>? Esta ação não pode ser desfeita.</p>
@@ -276,10 +292,10 @@ function ProfileRow({ profile, onEdit, onDelete, zebra }: { profile: AccessProfi
   }, [profile.id]);
   return (
     <tr className={zebra ? 'bg-blue-50/40 hover:bg-blue-100/60' : 'hover:bg-blue-50/60'}>
-      <td className="py-1.5 px-4 font-medium text-[#002943] align-middle">{profile.name}</td>
-      <td className="py-1.5 px-4 text-xs text-gray-600 align-middle">{perms.join(', ')}</td>
-      <td className="py-1.5 px-4 text-center align-middle">
-        <div className="flex items-center justify-center gap-2">
+      <td className="py-2 px-4 font-medium text-[#002943]">{profile.name}</td>
+      <td className="py-2 px-4 text-xs text-gray-600">{perms.join(', ')}</td>
+      <td className="py-2 px-4 text-center">
+        <div className="flex gap-2 justify-center">
           <button
             className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-900 font-semibold px-2 py-1 rounded transition-colors"
             onClick={() => onEdit(profile)}

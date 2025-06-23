@@ -6,7 +6,10 @@ import { EmployeeFormData, Employee } from '../../types/Employee';
 import { 
   FaExclamationTriangle,
   FaCheckCircle,
-  FaArrowLeft
+  FaArrowLeft,
+  FaEyeSlash,
+  FaChartLine,
+  FaBox
 } from 'react-icons/fa';
 import { 
   UserIcon, 
@@ -21,6 +24,8 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { EmployeeSalaryHistory } from './EmployeeSalaryHistory';
+import { Listbox, Transition } from '@headlessui/react';
+import { Item } from '../../services/database';
 
 // Função para formatar valor monetário para exibição (ex: 5000.5 -> '5.000,50')
 const formatCurrency = (value: number | string | null): string => {
@@ -143,16 +148,16 @@ const InputField: React.FC<InputFieldProps> = ({
       maximumFractionDigits: 2
     });
     setDisplayValue(formatted);
-    // Dispara o evento com o valor numérico
+    // Dispara o evento com o valor numérico como string
     const syntheticEvent = {
       ...e,
       target: {
         ...e.target,
         name,
-        value: floatValue
+        value: floatValue.toString()
       }
     };
-    onChange(syntheticEvent as React.ChangeEvent<HTMLInputElement>);
+    onChange(syntheticEvent as unknown as React.ChangeEvent<HTMLInputElement>);
   };
 
   // Estilo base para todos os inputs
@@ -241,6 +246,11 @@ export function EmployeeForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showSalaryIncreaseModal, setShowSalaryIncreaseModal] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<Item[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemSearch, setItemSearch] = useState('');
+  const [showAvailableItems, setShowAvailableItems] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -285,7 +295,21 @@ export function EmployeeForm() {
       }
     };
 
+    // Carrega itens do inventário
+    const fetchItems = async () => {
+      try {
+        setItemsLoading(true);
+        const items = await databaseService.items.getAll();
+        setInventoryItems(items);
+      } catch (err) {
+        console.error('Erro ao carregar itens do inventário:', err);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
     fetchData();
+    fetchItems();
   }, [id]);
 
   const formatCPF = (cpf: string | null): string => {
@@ -439,6 +463,24 @@ export function EmployeeForm() {
     }
   };
 
+  // Handler para seleção de itens vinculados
+  const handleLinkedItemsChange = (selectedIds: string[]) => {
+    setFormState(prev => ({
+      ...prev,
+      itens_vinculados: selectedIds
+    }));
+  };
+
+  // --- filteredItems helper ---
+  const filteredItems = inventoryItems.filter(item => {
+    const search = itemSearch.toLowerCase();
+    return (
+      item.item.toLowerCase().includes(search) ||
+      (item.modelo && item.modelo.toLowerCase().includes(search)) ||
+      (item.codigo && item.codigo.toLowerCase().includes(search))
+    );
+  });
+
   if (loading) {
     return <div>Carregando...</div>;
   }
@@ -584,8 +626,8 @@ export function EmployeeForm() {
               <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Salário</h3>
               <p className="mt-1 text-sm text-gray-500">Informações salariais do funcionário.</p>
             </div>
-            <div className="flex flex-col sm:flex-row sm:gap-6 sm:items-center">
-              <div className="flex-1 min-w-[220px] flex items-center">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-x-6 w-full">
+              <div className="flex items-start">
                 <InputField 
                   icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
                   label={<span className="flex items-center">Salário Inicial</span>} 
@@ -596,10 +638,10 @@ export function EmployeeForm() {
                   value={formState.salario_inicial ?? ''}
                   onChange={handleChange}
                   isCurrency
-                  className="max-w-md w-full"
+                  className="w-48"
                 />
               </div>
-              <div className="flex-1 min-w-[220px] flex items-center">
+              <div className="flex items-start">
                 <InputField 
                   icon={<CurrencyDollarIcon className="h-5 w-5 text-gray-400" />} 
                   label={<span className="flex items-center">Salário Atual</span>} 
@@ -610,29 +652,146 @@ export function EmployeeForm() {
                   value={formState.salario_atual ?? ''}
                   onChange={handleChange}
                   isCurrency
-                  className="max-w-md w-full"
+                  className="w-48"
                   readOnly
                 />
               </div>
               {isEditing && (
-                <div className="flex min-w-[180px] items-center h-full">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowSalaryIncreaseModal(true)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 flex items-center gap-2 transition-colors w-full sm:w-auto h-[42px]"
-                  >
-                    <CurrencyDollarIcon className="h-4 w-4" />
-                    Ajustar Salário
-                  </button>
+                <div className="flex flex-row gap-4 items-start h-full">
+                  <div className="flex flex-col items-center w-48">
+                    <span className="block h-6"></span>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowSalaryIncreaseModal(true)}
+                      className="bg-blue-500 text-white px-4 py-2 h-[38px] w-full rounded-md hover:bg-blue-600 flex items-center gap-2 transition-colors"
+                    >
+                      <CurrencyDollarIcon className="h-4 w-4" />
+                      Ajustar Salário
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-center w-48">
+                    <span className="block h-6"></span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCharts((prev) => !prev)}
+                      className="border border-blue-500 text-blue-600 px-4 py-2 h-[38px] w-full rounded-md hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                    >
+                      {showCharts ? <FaEyeSlash className="h-4 w-4" /> : <FaChartLine className="h-4 w-4" />}
+                      {showCharts ? 'Ocultar Gráficos' : 'Mostrar Gráficos'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
             {/* Histórico salarial integrado */}
             {isEditing && id && (
               <div className="mt-8">
-                <EmployeeSalaryHistory employeeId={id} />
+                <EmployeeSalaryHistory employeeId={id} showCharts={showCharts} />
               </div>
             )}
+          </div>
+
+          {/* Seção de Itens do Inventário Vinculados */}
+          <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-3">Itens do Inventário Vinculados</h3>
+              <p className="mt-1 text-sm text-gray-500">Selecione os itens do inventário que deseja vincular a este funcionário.</p>
+            </div>
+            {/* Itens vinculados acima do campo de busca */}
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Itens vinculados</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {(formState.itens_vinculados && formState.itens_vinculados.length > 0) ? (
+                  formState.itens_vinculados.map((id: string) => {
+                    const item = inventoryItems.find(i => i.id === id);
+                    if (!item) return null;
+                    return (
+                      <div key={id} className="relative flex flex-col items-start gap-1 p-3 rounded bg-blue-100 border border-blue-200 text-xs text-blue-900 transition-colors shadow-sm h-full text-left">
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 text-red-500 hover:text-red-700 text-lg font-bold px-1 focus:outline-none"
+                          onClick={() => handleLinkedItemsChange((formState.itens_vinculados as string[]).filter(x => x !== id))}
+                          title="Remover item"
+                        >
+                          ×
+                        </button>
+                        <div className="flex items-center gap-2 mb-1">
+                          <FaBox className="h-4 w-4 text-blue-400" />
+                          <span className="font-semibold">{item.item}</span>
+                        </div>
+                        {item.modelo && <div className="text-blue-800">Modelo: {item.modelo}</div>}
+                        {item.codigo && <div className="text-blue-700 text-xs">Código: {item.codigo}</div>}
+                        {item.numero_serie && <div className="text-blue-700 text-xs">Nº Série: {item.numero_serie}</div>}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-gray-400 text-xs col-span-full">Nenhum item vinculado</div>
+                )}
+              </div>
+            </div>
+            {/* Campo de busca */}
+            <div className="mb-4">
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Buscar item por nome, modelo ou código..."
+                value={itemSearch}
+                onChange={e => setItemSearch(e.target.value)}
+              />
+            </div>
+            {/* Itens disponíveis em cards ordenados por código */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-gray-700">Itens disponíveis</h4>
+                <button
+                  type="button"
+                  className="text-xs px-3 py-1 rounded bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200 transition-colors"
+                  onClick={() => setShowAvailableItems(v => !v)}
+                  aria-expanded={showAvailableItems}
+                  aria-controls="available-items-list"
+                >
+                  {showAvailableItems ? 'Ocultar' : 'Exibir'}
+                </button>
+              </div>
+              {showAvailableItems && (
+                <div id="available-items-list" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {itemsLoading ? (
+                    <div className="text-gray-500 text-sm col-span-full">Carregando itens...</div>
+                  ) : (
+                    (() => {
+                      const available = filteredItems
+                        .filter(item => !(formState.itens_vinculados || []).includes(item.id))
+                        .sort((a, b) => {
+                          const codeA = parseInt(a.codigo || '0', 10);
+                          const codeB = parseInt(b.codigo || '0', 10);
+                          return codeA - codeB;
+                        });
+                      if (available.length === 0) {
+                        return <div className="text-gray-400 text-xs col-span-full">Nenhum item disponível</div>;
+                      }
+                      return available.map(item => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          className="flex flex-col items-start gap-1 p-3 rounded bg-white hover:bg-blue-50 border border-gray-200 text-xs text-gray-800 transition-colors shadow-sm h-full text-left"
+                          onClick={() => handleLinkedItemsChange([...(formState.itens_vinculados || []), item.id])}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <FaBox className="h-4 w-4 text-blue-400" />
+                            <span className="font-semibold text-blue-900">{item.item}</span>
+                          </div>
+                          {item.modelo && <div className="text-gray-600">Modelo: {item.modelo}</div>}
+                          {item.codigo && <div className="text-gray-400 text-xs">Código: {item.codigo}</div>}
+                          {item.numero_serie && <div className="text-gray-400 text-xs">Nº Série: {item.numero_serie}</div>}
+                        </button>
+                      ));
+                    })()
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Clique para adicionar/remover itens vinculados ao colaborador.</p>
           </div>
 
           <div className="pt-5 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
